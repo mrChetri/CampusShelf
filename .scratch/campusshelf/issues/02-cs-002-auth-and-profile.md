@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: CS-001 Workspace Foundation + CI
 
-**Status:** ready-for-review
+**Status:** resolved
 
 - [x] Supabase Auth client configured on frontend and Supabase admin/auth client configured on backend
 - [x] Backend auth middleware validates Supabase JWT access token on private routes and attaches user identity
