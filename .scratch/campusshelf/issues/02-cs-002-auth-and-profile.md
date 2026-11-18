@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: CS-001 Workspace Foundation + CI
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] Supabase Auth client configured on frontend and Supabase admin/auth client configured on backend
-- [ ] Backend auth middleware validates Supabase JWT access token on private routes and attaches user identity
-- [ ] `GET /me` endpoint returns current user profile derived from validated server session
-- [ ] Web app supports signing in with Google OAuth, signing out, and displaying active user profile state
-- [ ] Unauthenticated guest users can freely browse public routes without forced redirection
+- [x] Supabase Auth client configured on frontend and Supabase admin/auth client configured on backend
+- [x] Backend auth middleware validates Supabase JWT access token on private routes and attaches user identity
+- [x] `GET /me` endpoint returns current user profile derived from validated server session
+- [x] Web app supports signing in with Google OAuth, signing out, and displaying active user profile state
+- [x] Unauthenticated guest users can freely browse public routes without forced redirection

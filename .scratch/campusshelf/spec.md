@@ -1,57 +1,72 @@
-# Specification: CS-001 Workspace Foundation + CI
+# Specification: CS-002 Authentication + Profile Bootstrap
 
 **Status:** ready-for-agent
 
 ## Problem Statement
 
-When starting development on CampusShelf, engineers and autonomous agents need a clean, stable, and deterministic monorepo environment to build full-stack vertical slices. Without a verified workspace baseline, type contracts fall out of sync between frontend and backend, environment configurations drift across machines, broken builds bypass checks without automated CI, and initial development suffers from ad-hoc dependencies and inconsistent project conventions.
+Students visiting CampusShelf need a secure, low-friction way to authenticate using their existing Google accounts without complex password setups. At the same time, prospective students and visitors must be able to explore available books as guests without being immediately forced behind a registration wall. Crucially, client-supplied identities (such as emails or user IDs in request bodies) cannot be trusted to establish ownership or permissions; the backend API must cryptographically verify every request using verified server-side session tokens.
 
 ## Solution
 
-A robust pnpm monorepo workspace containing a TypeScript React web application, a TypeScript Express backend API, a shared Zod contracts package, strict environment validation, an automated GitHub Actions CI pipeline, and a production-grade `/health` verification endpoint. This foundation proves clean local builds, strict typechecking across boundaries, automated testing execution, and continuous integration validation before any domain features are built.
+A dual-mode authentication and profile bootstrapping system powered by Supabase Auth with Google OAuth. Unauthenticated users browse freely as guests. When a student chooses to sign in, they authenticate via Google OAuth in the browser. The frontend obtains a JWT access token and passes it in the `Authorization: Bearer <token>` header to the backend API. An Express authentication middleware validates the token cryptographically on the server, creates or retrieves the student's profile in the database, and exposes a `/api/me` profile endpoint. The user begins in the `Registered User` state until they redeem a campus invite code.
 
 ## User Stories
 
-1. As a platform engineer, I want a unified monorepo workspace, so that frontend, backend, and shared contract packages can be developed and maintained in a single synchronized repository.
-2. As a backend developer, I want a shared contracts package with Zod schemas, so that API response and request shapes are enforced across both server and client without duplicate manual type definitions.
-3. As a frontend developer, I want a preconfigured Vite React TypeScript setup with Tailwind CSS, so that student UI screens can be built rapidly with production styling conventions.
-4. As an API developer, I want Express configured with thin routes, controllers, and services, so that every backend module adheres to feature-first architectural separation from day one.
-5. As a site reliability engineer, I want a public `/health` endpoint on the API, so that monitoring tools, hosting providers, and deployment checks can verify application uptime, environment sanity, and system status.
-6. As a frontend client, I want the web application to consume the shared health contract, so that the UI can verify and display API connectivity status without type drift.
-7. As an engineer running the API locally, I want environment variables validated at startup via Zod, so that missing or malformed configuration fails loudly and immediately with actionable errors rather than runtime exceptions.
-8. As a developer making code changes, I want a single root test command, so that all package unit and integration tests run predictably and report clear results.
-9. As a developer making code changes, I want a single root typecheck command, so that TypeScript errors across any workspace package fail the build before execution.
-10. As a maintainer reviewing pull requests, I want GitHub Actions to run typecheck, lint, test, and build workflows automatically, so that no broken code can be merged into the main branch.
-11. As an autonomous agent implementing tickets, I want isolated package boundaries, so that vertical slices can be developed incrementally using strict test-driven development without unexpected cross-package regressions.
-12. As a platform engineer, I want strict `.gitignore` configurations, so that node_modules, generated build output, local environment secrets, and OS cache files are never accidentally tracked in version control.
+1. As a visiting student, I want to browse public book listings without signing in, so that I can explore the catalog before deciding to register.
+2. As a student, I want to sign in using my Google account with one click, so that I don't have to manage another set of credentials or passwords.
+3. As an authenticated student, I want the system to automatically load my profile (name, email, avatar), so that I know I am properly signed in.
+4. As a new user signing in for the first time, I want my profile automatically provisioned in the system with `Registered User` status, so that I can prepare to join my campus.
+5. As an authenticated student, I want to see a visual indicator of my membership status in the navigation bar, so that I understand what actions I am currently eligible to perform.
+6. As an authenticated student, I want to be able to sign out securely at any time, so that my account is not left active on shared or campus library computers.
+7. As an API client, I want to send my access token via standard `Authorization: Bearer <token>` HTTP headers, so that the API can verify my identity on protected endpoints.
+8. As a backend service, I want to verify JWT access tokens on the server, so that forged, expired, or tampered tokens are rejected with HTTP 401.
+9. As a backend service, I want the user ID and email to be derived exclusively from the verified token payload, so that malicious clients cannot impersonate other users by sending fake IDs in the request body.
+10. As a platform developer, I want a shared `UserProfileSchema` contract in `@campusshelf/contracts`, so that profile data shapes are identical across web and API.
+11. As an API developer, I want an auth middleware that attaches the verified user payload to the Express request object, so that downstream controllers and services can cleanly access authenticated user information.
+12. As a security engineer, I want public routes to remain accessible while private routes require valid bearer tokens, so that endpoints are protected according to the principle of least privilege.
 
 ## Implementation Decisions
 
-- **Monorepo Topology**: Use pnpm workspaces to manage `apps/web`, `apps/api`, and `packages/contracts`. Dependency hoisting and package linking are governed by pnpm workspace resolution.
-- **Shared Contracts Architecture**: The shared contracts package exports immutable Zod schemas and derived TypeScript types for all data transfer objects (DTOs), starting with the health check response contract (`HealthResponseSchema`). Neither the web client nor the API may duplicate these DTO shapes.
-- **Backend Architecture Separation**: The Express API follows feature-first organization. The health check module is implemented with thin routes (`health.routes.ts`), an Express request/response controller (`health.controller.ts`), a pure business logic service (`health.service.ts`), and a module schema referencing the shared contract (`health.schema.ts`).
-- **Environment Validation**: Server environment configuration is parsed and validated on boot using a Zod schema before the Express HTTP server binds to the listening port. Missing or invalid variables log descriptive error messages and exit the process with code 1.
-- **CORS and Middleware Foundation**: The Express API includes JSON body parsing and CORS middleware configured to allow requests from the frontend client domain and local development origins.
-- **Frontend Architecture Setup**: The web app uses Vite with React and Tailwind CSS. The root shell component renders the foundational layout, navigation header, and a live health check status badge that consumes the API health endpoint.
-- **Continuous Integration Pipeline**: A GitHub Actions workflow runs on every push and pull request against the default branch. The pipeline executes frozen lockfile dependency installation, monorepo typechecking, automated test suites, and application builds.
+- **Supabase Auth Integration**: Use `@supabase/supabase-js` on both web and API. The web client handles Google OAuth sign-in and session lifecycle; the API validates incoming bearer tokens.
+- **Shared Profile Contract**: In `@campusshelf/contracts`, define and export `UserProfileSchema` and `UserRoleSchema` (values: `REGISTERED`, `CAMPUS_MEMBER`, `MODERATOR`, `ADMIN`).
+- **Feature-First Auth/User Backend Module**:
+  - `auth.middleware.ts`: Reusable middleware verifying `Authorization: Bearer <token>`. Returns `401 Unauthorized` with structured error response if token is missing, invalid, or expired.
+  - `user.routes.ts`: Thin routing mounting `GET /me` (protected by `authMiddleware`).
+  - `user.controller.ts`: Handles HTTP request and response for `/me`.
+  - `user.service.ts`: Business logic to retrieve or bootstrap a user profile record given the verified token subject.
+  - `user.schema.ts`: Re-exports profile schemas from contracts.
+- **Database / Persistence Foundation**:
+  - Introduce Prisma ORM in `apps/api/prisma/schema.prisma` with a `User` model (`id`, `email`, `fullName`, `avatarUrl`, `role`, `createdAt`, `updatedAt`).
+  - Implement a Prisma client singleton helper in `apps/api/src/lib/prisma.ts`.
+- **Frontend Auth State & Header Navigation**:
+  - Implement Supabase browser client helper and auth context/hook managing user session.
+  - Update root shell navigation header to render guest sign-in CTA or authenticated user profile chip with avatar, role badge, and sign-out button.
+- **Environment Configuration**:
+  - Update `apps/api/src/config/env.ts` to validate `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and optional `SUPABASE_JWT_SECRET`.
+  - Provide a `.env.example` in repo root and `apps/api` documenting variables without committing secrets.
 
 ## Testing Decisions
 
-- **Test Quality Definition**: Tests must verify observable external behavior through public module interfaces, not private internals or implementation details. Tests must withstand refactoring as long as the public interface and behavior remain stable.
-- **Backend Integration Testing**: The primary backend seam is tested using Supertest directly against the Express application instance. Tests verify that `GET /health` returns HTTP 200, sets appropriate JSON content-type headers, and produces a payload adhering strictly to the shared health contract.
-- **Frontend Component Testing**: The frontend seam is tested using React Testing Library to verify that the root shell component renders properly, displays application branding, and reflects system status.
-- **Contracts Unit Testing**: Shared contracts are tested by asserting that valid payloads pass schema parsing and invalid payloads are rejected with structured Zod errors.
-- **Strict TDD Compliance**: In accordance with project conventions, meaningful failing tests must be written and executed first (RED) before writing the minimal production code to pass them (GREEN), followed by refactoring.
+- **Hermetic Testing Without Live External Services**: Automated test suites must run completely offline without relying on real Supabase network connections. Tests must verify the public boundary using mocked or token-signing test utilities.
+- **Backend HTTP Seam (`GET /api/me`)**:
+  - Test missing authorization header returns 401.
+  - Test invalid or malformed bearer token returns 401.
+  - Test valid bearer token returns 200 with payload matching `UserProfileSchema`.
+  - Test user profile bootstrapping on first valid login.
+- **Frontend Component Seams**:
+  - Test unauthenticated guest state displays "Sign in with Google" button and guest browsing view.
+  - Test authenticated session state displays user's name, avatar, `Registered User` badge, and sign-out button.
+- **Contracts Unit Tests**:
+  - Test `UserProfileSchema` parses valid user profile payloads and rejects invalid roles or missing fields.
 
 ## Out of Scope
 
-- User authentication, Supabase Auth integration, and Google OAuth login (deferred to CS-002).
-- Prisma database schema creation, migrations, and database connections (deferred to CS-002 and CS-003).
-- Campus invite code generation and campus selection directory (deferred to CS-003).
-- Book listing creation, editing, and photo uploads (deferred to CS-004 and CS-005).
-- Docker containers or containerized deployment manifests.
+- Campus directory selection and invite code redemption (deferred to CS-003).
+- Creation and management of donation listings (deferred to CS-004).
+- Email/password manual registration or custom OTP emails (using Google OAuth via Supabase Auth).
+- Storage bucket file uploads (deferred to CS-004).
 
 ## Further Notes
 
-- The project adheres to a single-context domain model documented in `GLOSSARY.md`.
-- Deployment targets are Cloudflare Pages for the frontend static build and Render Free Web Service for the backend Express API. All code in this foundation must support stateless hosting without depending on a persistent local filesystem.
+- In accordance with `GLOSSARY.md`, newly authenticated users hold the `Registered User` role and are not yet labeled `Campus Member` until an invite code is redeemed in CS-003.
+- Deployment targets remain Cloudflare Pages for `apps/web` and Render for `apps/api`. All authentication verification is stateless and JWT-driven.
