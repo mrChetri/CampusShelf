@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-review
+**Status:** resolved
 
 - [x] Monorepo workspace initialized with pnpm (`apps/web`, `apps/api`, `packages/contracts`)
 - [x] Shared contracts package exports Zod schema and TypeScript type for `HealthResponse`
