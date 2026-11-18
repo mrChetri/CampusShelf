@@ -1,0 +1,12 @@
+{
+  "name": "campusshelf-workspace",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r --filter=!campusshelf-workspace build",
+    "test": "pnpm -r --filter=!campusshelf-workspace test",
+    "type-check": "pnpm -r --filter=!campusshelf-workspace type-check"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

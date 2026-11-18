@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "useDefineForClassFields": true,
+    "allowJs": false,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src"]
+}
