@@ -1,0 +1,50 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  fullName  String
+  avatarUrl String?
+  role      String    @default("REGISTERED")
+  campusId  String?
+  campus    Campus?   @relation(fields: [campusId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Campus {
+  id          String             @id @default(uuid())
+  name        String
+  slug        String             @unique
+  city        String
+  state       String
+  active      Boolean            @default(true)
+  users       User[]
+  inviteCodes CampusInviteCode[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("campuses")
+}
+
+model CampusInviteCode {
+  id        String    @id @default(uuid())
+  campusId  String
+  campus    Campus    @relation(fields: [campusId], references: [id])
+  codeHash  String    @unique
+  maxUses   Int       @default(100)
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  revoked   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@map("campus_invite_codes")
+}

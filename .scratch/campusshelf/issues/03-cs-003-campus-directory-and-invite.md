@@ -4,10 +4,10 @@
 
 **Blocked by:** 02: CS-002 Authentication + Profile Bootstrap
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] Prisma schema includes `Campus` and `CampusInviteCode` models
-- [ ] `GET /campuses` returns active pilot campuses
-- [ ] `POST /campuses/redeem-invite` validates hashed invite code, enforces expiration/usage limits, and transitions user to `Campus Member`
-- [ ] Frontend onboarding screen allows newly registered users to select their campus and enter invite code
-- [ ] Admin endpoint allows generating and revoking campus invite codes
+- [x] Prisma schema includes `Campus` and `CampusInviteCode` models
+- [x] `GET /campuses` returns active pilot campuses
+- [x] `POST /campuses/redeem-invite` validates hashed invite code, enforces expiration/usage limits, and transitions user to `Campus Member`
+- [x] Frontend onboarding screen allows newly registered users to select their campus and enter invite code
+- [x] Admin endpoint allows generating and revoking campus invite codes
