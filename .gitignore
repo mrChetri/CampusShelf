@@ -8,3 +8,7 @@ coverage
 .DS_Store
 Thumbs.db
 *.log
+*.timestamp-*.mjs
+test-pipe.ts
+apps/api/vitest.config.*
+apps/web/vite.config.mjs

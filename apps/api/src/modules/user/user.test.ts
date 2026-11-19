@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import request from 'supertest';
+import { createTestClient } from '../../test-utils/test-client';
 import { createApp } from '../../app';
 import { UserProfileSchema } from '@campusshelf/contracts';
 
 describe('GET /api/me (Backend Auth Seam)', () => {
   it('returns 401 Unauthorized when Authorization header is missing', async () => {
     const app = createApp();
-    const response = await request(app).get('/api/me');
+    const response = await createTestClient(app).get('/api/me');
 
     expect(response.status).toBe(401);
     expect(response.body).toHaveProperty('error');
@@ -15,7 +15,7 @@ describe('GET /api/me (Backend Auth Seam)', () => {
 
   it('returns 401 Unauthorized when Bearer token is malformed', async () => {
     const app = createApp();
-    const response = await request(app)
+    const response = await createTestClient(app)
       .get('/api/me')
       .set('Authorization', 'Bearer invalid-token-string');
 
@@ -29,7 +29,7 @@ describe('GET /api/me (Backend Auth Seam)', () => {
     const testUserId = '11111111-2222-3333-4444-555555555555';
     const testToken = `test-token:${testUserId}:student.test@darrang.edu:Aarav Sharma`;
 
-    const response = await request(app)
+    const response = await createTestClient(app)
       .get('/api/me')
       .set('Authorization', `Bearer ${testToken}`);
 
@@ -52,7 +52,7 @@ describe('GET /api/me (Backend Auth Seam)', () => {
     const testUserId = '22222222-3333-4444-5555-666666666666';
     const testToken = `test-token:${testUserId}:priya.patel@darrang.edu:Priya Patel`;
 
-    const response = await request(app)
+    const response = await createTestClient(app)
       .get('/me')
       .set('Authorization', `Bearer ${testToken}`);
 

@@ -27,6 +27,21 @@ export class UserService {
   public getProfileById(userId: string): UserProfile | null {
     return this.profiles.get(userId) ?? null;
   }
+
+  public updateProfile(userId: string, updates: Partial<UserProfile>): UserProfile | null {
+    const existing = this.profiles.get(userId);
+    if (!existing) {
+      return null;
+    }
+
+    const updated: UserProfile = {
+      ...existing,
+      ...updates,
+    };
+
+    this.profiles.set(userId, updated);
+    return updated;
+  }
 }
 
 export const userService = new UserService();

@@ -74,4 +74,44 @@ describe('App Root Shell (Frontend Seam)', () => {
       expect(screen.getByRole('button', { name: /Sign in with Google/i })).toBeInTheDocument();
     });
   });
+
+  it('renders campus onboarding card for Registered Users and allows redeeming invite code', async () => {
+    render(<App />);
+
+    // Sign in as Registered User
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    // Onboarding card should appear
+    const onboardingCard = await screen.findByTestId('campus-onboarding-card');
+    expect(onboardingCard).toBeInTheDocument();
+    expect(screen.getByText(/Join Your College Community/i)).toBeInTheDocument();
+
+    const campusSelect = screen.getByTestId('campus-select');
+    expect(campusSelect).toBeInTheDocument();
+
+    const codeInput = screen.getByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+
+    // Attempt with empty/invalid code triggers error
+    fireEvent.change(codeInput, { target: { value: 'BAD' } });
+    fireEvent.click(submitBtn);
+
+    const errorAlert = await screen.findByTestId('onboarding-error');
+    expect(errorAlert).toBeInTheDocument();
+
+    // Submit valid pilot code
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Transition to Campus Member
+    await waitFor(() => {
+      const profileChip = screen.getByTestId('user-profile-chip');
+      expect(within(profileChip).getByText(/Campus Member/i)).toBeInTheDocument();
+      expect(within(profileChip).getByText(/Darrang College/i)).toBeInTheDocument();
+    });
+
+    // Onboarding card disappears once user is a Campus Member
+    expect(screen.queryByTestId('campus-onboarding-card')).not.toBeInTheDocument();
+  });
 });

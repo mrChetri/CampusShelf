@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc --noEmit",
     "start": "tsx src/server.ts",
-    "test": "vitest run --environment=node --cache=false",
+    "test": "vitest run --environment=node --cache=false --config ../../packages/contracts/vitest.config.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
