@@ -15,6 +15,8 @@ export const UserProfileSchema = z.object({
   fullName: z.string().min(1),
   avatarUrl: z.string().url().nullable().optional(),
   role: UserRoleSchema,
+  campusId: z.string().uuid().nullable().optional(),
+  campusName: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
 });
 
