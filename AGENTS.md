@@ -58,6 +58,10 @@ Commit only after a complete, verified TDD cycle and passing quality gates:
 5. `pnpm test` passes with zero failures.
 6. Commit message follows conventional commits: `feat(CS-NNN): <description>` or `fix(CS-NNN): <description>`.
 
+### Windows Sandbox & Git Execution
+- On Windows, the restricted AppContainer sandbox blocks Git from writing loose objects into `.git/objects/` (`Permission denied`) and replacing `.git/index`.
+- **Always execute Git state-changing commands** (`git add`, `git commit`, `git checkout`, `git switch`, `git branch`, `git clean`) with `BypassSandbox: true` directly. Do not attempt them in the restricted sandbox first, avoiding wasted diagnostic cycles and delays.
+
 ### When to Merge to `main`
 - Merge to `main` only when all acceptance criteria for the ticket are satisfied and verified by code review.
 - Always ask the user for confirmation before committing, merging, or pushing.
