@@ -41,31 +41,62 @@ Canonical triage roles mapped to standard label strings. See `docs/agents/triage
 
 Single-context layout (`GLOSSARY.md` + `docs/adr/` at root). See `docs/agents/domain.md`.
 
-## Git Branching, Commit & Merge Conventions
+## Git & GitHub Pull Request Workflow Conventions
 
-### Branching Policy
-- **Main branch (`main`)**: Production-ready code only. Never commit untested work directly to `main`.
-- **Feature branches**: Every ticket must be developed in its own branch branched from `main`:
-  - Format: `feature/CS-NNN-<slug>` (e.g. `feature/CS-001-workspace-foundation`).
+### 1. Branching Policy
+- **Main branch (`main`)**: Production-ready code only. Never implement or commit feature changes directly on `main`.
+- **Feature branches**: Every implementation ticket must be developed in its own dedicated branch branched from the latest `main`:
+  - Format: `feature/CS-NNN-<slug>` (e.g. `feature/CS-004-donate-book`).
   - Bugfix format: `fix/CS-NNN-<slug>`.
 
-### When to Commit
-Commit only after a complete, verified TDD cycle and passing quality gates:
-1. Meaningful test written first and failed (RED).
-2. Minimal implementation code written and test passes (GREEN).
-3. Code refactored cleanly (REFACTOR).
-4. `pnpm type-check` passes with zero errors across all packages.
-5. `pnpm test` passes with zero failures.
-6. Commit message follows conventional commits: `feat(CS-NNN): <description>` or `fix(CS-NNN): <description>`.
+### 2. After Implementation Quality & Review Gates
+Once a ticket is implemented:
+- Run configured quality gates: `pnpm type-check`, `pnpm test`, linting, and production builds where applicable.
+- Perform a code review against the PRD, ticket, master specification (`spec.md`), and project conventions.
+- Fix legitimate findings and rerun affected checks until all pass green.
+- Inspect staged and untracked files (`git status`).
+- Never commit secrets, `.env` files, or unrelated user modifications.
 
-### Windows Sandbox & Git Execution
-- On Windows, the restricted AppContainer sandbox blocks Git from writing loose objects into `.git/objects/` (`Permission denied`) and replacing `.git/index`.
-- **Always execute Git state-changing commands** (`git add`, `git commit`, `git checkout`, `git switch`, `git branch`, `git clean`) with `BypassSandbox: true` directly. Do not attempt them in the restricted sandbox first, avoiding wasted diagnostic cycles and delays.
+### 3. Commit & Push Conventions
+- Commit verified changes using Conventional Commits: `feat(CS-NNN): <description>` or `fix(CS-NNN): <description>`.
+- Push the feature branch to GitHub: `git push -u origin feature/CS-NNN-<slug>`.
+- Never push directly to `main`.
+- Never force-push (`--force`) without explicit human authorization.
 
-### When to Merge to `main`
-- Merge to `main` only when all acceptance criteria for the ticket are satisfied and verified by code review.
-- Always ask the user for confirmation before committing, merging, or pushing.
-- After merging to `main`, delete the feature branch.
+### 4. GitHub Pull Request Creation
+- Use the configured GitHub MCP integration for all GitHub operations.
+- Create a Pull Request from the current feature branch into `main`.
+- Write a clear, ticket-based title and description (e.g. `feat(CS-004): book donation listing creation flow`).
+- Summarize implemented functionality and significant architectural decisions.
+- Include verification/testing results and note any remaining considerations.
+- Link the associated ticket from `.scratch/campusshelf/issues/` and master specification (`spec.md`).
+- Output the generated PR URL directly to the user.
+
+### 5. Mandatory Human Approval (Strict Policy)
+- **Never merge a Pull Request autonomously.**
+- **Never approve your own Pull Request.**
+- **Never delete the feature branch before human approval and merge.**
+- After creating the PR, stop calling tools and wait for human review.
+- Explicitly notify the user that the PR is ready for human review.
+- Ask the user to inform you after they have manually merged it or if they encounter any issues.
+
+### 6. Post-Merge Synchronization
+- Do not assume a PR has been merged. Only proceed when the user explicitly confirms that the PR has been merged and asks to assist.
+- **Workflow on confirmation**:
+  1. Verify the PR's actual merged state via GitHub MCP or `gh`.
+  2. Inspect local Git status to preserve any uncommitted user work.
+  3. Fetch and safely synchronize local `main`: `git checkout main && git pull origin main`.
+  4. Verify that local `main` contains the merged changes.
+  5. Delete only the completed local feature branch using safe deletion (`git branch -d feature/CS-NNN-<slug>`).
+  6. Never force-delete (`-D`) branches or discard uncommitted changes.
+
+### 7. Git & Environment Safety
+- On Windows, execute Git state-changing commands (`git add`, `git commit`, `git checkout`, `git switch`, `git branch`, `git clean`) with `BypassSandbox: true` directly to avoid AppContainer loose-object write permission blocks.
+- Never modify `.git` internal files or directory structures manually.
+- Never alter Windows folder permissions (`icacls`, `attrib`) to bypass Git errors without explicit approval.
+- Never reset (`git reset --hard`), clean (`git clean -fdx`), force-push, or discard user changes without permission.
+- Verify the result of every Git and GitHub operation before reporting success.
+- Stop and report blockers immediately rather than repeatedly attempting dangerous workarounds.
 
 ## Database & TDD Guidelines
 - **Prisma Data Layer**: Database schemas are maintained centrally in `apps/api/prisma/schema.prisma` (not in scattered model files). Feature folders contain `routes`, `controller`, `service`, `schema`, and `test`.
