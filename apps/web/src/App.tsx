@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import type { HealthResponse, UserProfile, Campus, Listing } from '@campusshelf/contracts';
+import type { HealthResponse, UserProfile, Campus, Listing, PublicListing } from '@campusshelf/contracts';
 import { DonateBookModal } from './components/DonateBookModal';
 import { MyListings } from './components/MyListings';
+import { BookDiscoveryFeed } from './components/BookDiscoveryFeed';
+import { BookDetailModal } from './components/BookDetailModal';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -24,6 +26,10 @@ export default function App(): React.JSX.Element {
   // CS-004: Listing state
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [isDonateModalOpen, setIsDonateModalOpen] = useState<boolean>(false);
+
+  // CS-005: Discovery & Detail state
+  const [selectedListing, setSelectedListing] = useState<PublicListing | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
 
   const getAuthToken = () => {
     if (!currentUser) return undefined;
@@ -285,7 +291,7 @@ export default function App(): React.JSX.Element {
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 flex flex-col items-center justify-center text-center w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-4 py-8 flex flex-col items-center justify-center text-center w-full">
         {currentUser && currentUser.role === 'REGISTERED' && (
           <div
             data-testid="campus-onboarding-card"
@@ -406,8 +412,19 @@ export default function App(): React.JSX.Element {
             <div>• CS-002 Authentication + Profile Bootstrap</div>
             <div>• CS-003 Campus Directory + Invite Code</div>
             <div>• CS-004 Create Donation Listing + My Listings</div>
+            <div>• CS-005 Donation-First Browse + Detail</div>
           </div>
         </div>
+
+        {/* CS-005: Public Book Discovery Feed */}
+        <BookDiscoveryFeed
+          campuses={campuses}
+          defaultCampusId={currentUser?.campusId || undefined}
+          onSelectListing={(listing) => {
+            setSelectedListing(listing);
+            setIsDetailModalOpen(true);
+          }}
+        />
       </main>
 
       {/* Donate a Book Modal (CS-004) */}
@@ -417,6 +434,17 @@ export default function App(): React.JSX.Element {
         onSuccess={handleListingCreated}
         token={getAuthToken()}
         defaultCampusName={currentUser?.campusName || 'Darrang College'}
+      />
+
+      {/* Book Detail Modal (CS-005) */}
+      <BookDetailModal
+        isOpen={isDetailModalOpen}
+        listing={selectedListing}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedListing(null);
+        }}
+        isCampusMember={currentUser?.role === 'CAMPUS_MEMBER'}
       />
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">

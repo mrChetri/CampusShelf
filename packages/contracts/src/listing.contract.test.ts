@@ -4,6 +4,9 @@ import {
   ListingSchema,
   MyListingsResponseSchema,
   WithdrawListingResponseSchema,
+  ListingsQuerySchema,
+  ListingsFeedResponseSchema,
+  ListingDetailResponseSchema,
 } from './listing.contract';
 
 describe('Listing Contracts', () => {
@@ -153,5 +156,95 @@ describe('Listing Contracts', () => {
     });
     expect(withdrawRes.success).toBe(true);
     expect(withdrawRes.listing.status).toBe('WITHDRAWN');
+  });
+
+  describe('Discovery & Browse Contracts (CS-005)', () => {
+    it('parses ListingsQuerySchema with default pagination and trimmed values', () => {
+      const emptyQuery = {};
+      const parsedDefault = ListingsQuerySchema.parse(emptyQuery);
+      expect(parsedDefault.page).toBe(1);
+      expect(parsedDefault.limit).toBe(12);
+
+      const fullQuery = {
+        search: '  physics vol 1  ',
+        campusId: validCampusUUID,
+        condition: 'GOOD',
+        course: 'B.Sc Physics',
+        semester: 'Semester 1',
+        page: '2',
+        limit: '20',
+      };
+      const parsedFull = ListingsQuerySchema.parse(fullQuery);
+      expect(parsedFull.search).toBe('physics vol 1');
+      expect(parsedFull.campusId).toBe(validCampusUUID);
+      expect(parsedFull.condition).toBe('GOOD');
+      expect(parsedFull.page).toBe(2);
+      expect(parsedFull.limit).toBe(20);
+    });
+
+    it('validates ListingsFeedResponseSchema with public listings list and pagination meta', () => {
+      const feedPayload = {
+        listings: [
+          {
+            id: validUUID,
+            donorId: validUUID,
+            donorName: 'Gopal Chetri',
+            campusId: validCampusUUID,
+            campusName: 'Darrang College',
+            title: 'Concepts of Physics Vol 1',
+            author: 'H.C. Verma',
+            subject: 'Physics',
+            condition: 'LIKE_NEW',
+            pickupLocation: 'College Canteen Corner',
+            photos: ['https://supabase.co/storage/v1/object/public/listings/hcverma.jpg'],
+            status: 'AVAILABLE',
+            type: 'DONATION',
+            createdAt: '2026-11-20T10:00:00.000Z',
+            updatedAt: '2026-11-20T10:00:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 12,
+        hasMore: false,
+      };
+
+      const parsedFeed = ListingsFeedResponseSchema.parse(feedPayload);
+      expect(parsedFeed.listings).toHaveLength(1);
+      expect(parsedFeed.total).toBe(1);
+      expect(parsedFeed.hasMore).toBe(false);
+
+      // Verify that no private contact fields exist on the public listing
+      const publicItem = parsedFeed.listings[0] as any;
+      expect(publicItem.email).toBeUndefined();
+      expect(publicItem.phoneNumber).toBeUndefined();
+      expect(publicItem.fullAddress).toBeUndefined();
+    });
+
+    it('validates ListingDetailResponseSchema for a single book', () => {
+      const detailPayload = {
+        listing: {
+          id: validUUID,
+          donorId: validUUID,
+          donorName: 'Asha Sharma',
+          campusId: validCampusUUID,
+          campusName: 'Darrang College',
+          title: 'University Physics',
+          author: 'Young and Freedman',
+          subject: 'Physics',
+          condition: 'GOOD',
+          pickupLocation: 'Central Library Entrance',
+          photos: ['https://example.com/p1.jpg'],
+          status: 'AVAILABLE',
+          type: 'DONATION',
+          createdAt: '2026-11-20T10:00:00.000Z',
+          updatedAt: '2026-11-20T10:00:00.000Z',
+        },
+      };
+
+      const parsed = ListingDetailResponseSchema.parse(detailPayload);
+      expect(parsed.listing.title).toBe('University Physics');
+      expect(parsed.listing.donorName).toBe('Asha Sharma');
+    });
   });
 });

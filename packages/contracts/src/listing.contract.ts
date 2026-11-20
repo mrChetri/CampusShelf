@@ -86,3 +86,36 @@ export const WithdrawListingResponseSchema = z.object({
 });
 
 export type WithdrawListingResponse = z.infer<typeof WithdrawListingResponseSchema>;
+
+export const ListingsQuerySchema = z.object({
+  search: z.string().trim().optional(),
+  campusId: z.string().uuid().optional(),
+  condition: ListingConditionEnum.optional(),
+  course: z.string().trim().optional(),
+  semester: z.string().trim().optional(),
+  type: ListingTypeEnum.optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(50).default(12),
+});
+
+export type ListingsQuery = z.infer<typeof ListingsQuerySchema>;
+
+export const PublicListingSchema = ListingSchema;
+export type PublicListing = z.infer<typeof PublicListingSchema>;
+
+export const ListingsFeedResponseSchema = z.object({
+  listings: z.array(PublicListingSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  limit: z.number().int().positive(),
+  hasMore: z.boolean(),
+});
+
+export type ListingsFeedResponse = z.infer<typeof ListingsFeedResponseSchema>;
+
+export const ListingDetailResponseSchema = z.object({
+  listing: PublicListingSchema,
+});
+
+export type ListingDetailResponse = z.infer<typeof ListingDetailResponseSchema>;
+

@@ -1,9 +1,39 @@
 import { Request, Response } from 'express';
 import { listingService } from './listing.service';
 import { userService } from '../user/user.service';
-import { CreateListingInputSchema } from './listing.schema';
+import { CreateListingInputSchema, ListingsQuerySchema } from './listing.schema';
 
 export class ListingController {
+  public async getListingsFeed(req: Request, res: Response): Promise<void> {
+    const parseResult = ListingsQuerySchema.safeParse(req.query);
+    if (!parseResult.success) {
+      res.status(400).json({
+        error: 'Invalid query parameters',
+        details: parseResult.error.flatten(),
+      });
+      return;
+    }
+
+    try {
+      const feed = listingService.getListingsFeed(parseResult.data);
+      res.status(200).json(feed);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to fetch listings feed' });
+    }
+  }
+
+  public async getListingDetail(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const listing = listingService.getListingById(id);
+
+    if (!listing) {
+      res.status(404).json({ error: 'Listing not found' });
+      return;
+    }
+
+    res.status(200).json({ listing });
+  }
+
   public async createListing(req: Request, res: Response): Promise<void> {
     const authUser = req.user;
     if (!authUser || !authUser.id) {
