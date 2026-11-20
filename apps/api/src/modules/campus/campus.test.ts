@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { createTestClient } from '../../test-utils/test-client';
+import supertest from 'supertest';
 import { createApp } from '../../app';
 import { campusService } from './campus.service';
 
@@ -11,7 +11,7 @@ describe('Campus Module Seam (CS-003)', () => {
 
   beforeEach(() => {
     app = createApp();
-    request = createTestClient(app);
+    request = supertest(app);
     campusService.resetForTesting();
     const campuses = campusService.listCampuses();
     pilotCampusId = campuses[0].id;
