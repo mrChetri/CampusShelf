@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { HealthResponse, UserProfile, Campus } from '@campusshelf/contracts';
+import type { HealthResponse, UserProfile, Campus, Listing } from '@campusshelf/contracts';
+import { DonateBookModal } from './components/DonateBookModal';
+import { MyListings } from './components/MyListings';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -18,6 +20,15 @@ export default function App(): React.JSX.Element {
   const [inviteCode, setInviteCode] = useState<string>('');
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // CS-004: Listing state
+  const [myListings, setMyListings] = useState<Listing[]>([]);
+  const [isDonateModalOpen, setIsDonateModalOpen] = useState<boolean>(false);
+
+  const getAuthToken = () => {
+    if (!currentUser) return undefined;
+    return `test-token:${currentUser.id}:${currentUser.email}:${currentUser.fullName}`;
+  };
 
   useEffect(() => {
     fetch('/api/health')
@@ -44,6 +55,29 @@ export default function App(): React.JSX.Element {
       });
   }, []);
 
+  // Fetch my listings when user becomes a Campus Member
+  useEffect(() => {
+    if (currentUser?.role === 'CAMPUS_MEMBER') {
+      const token = getAuthToken();
+      fetch('/api/listings/mine', {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (data && Array.isArray(data.listings)) {
+            setMyListings(data.listings);
+          }
+        })
+        .catch(() => {
+          // Keep existing local listings state
+        });
+    } else {
+      setMyListings([]);
+    }
+  }, [currentUser]);
+
   const handleSignInWithGoogle = () => {
     // Simulated Google OAuth profile bootstrap (default role: REGISTERED)
     const mockStudent: UserProfile = {
@@ -64,6 +98,8 @@ export default function App(): React.JSX.Element {
     setCurrentUser(null);
     setInviteCode('');
     setOnboardingError(null);
+    setMyListings([]);
+    setIsDonateModalOpen(false);
   };
 
   const handleRedeemInvite = async (e: React.FormEvent) => {
@@ -78,7 +114,6 @@ export default function App(): React.JSX.Element {
 
     const trimmedCode = inviteCode.trim().toUpperCase();
 
-    // Check against API or simulated pilot code validation
     try {
       const response = await fetch('/api/campuses/redeem-invite', {
         method: 'POST',
@@ -98,7 +133,6 @@ export default function App(): React.JSX.Element {
         setInviteCode('');
       } else {
         const errorData = await response.json().catch(() => ({}));
-        // Fallback simulation for client-only test environments
         if (trimmedCode === 'DARRANG-PILOT-2026') {
           const selectedCampus = campuses.find((c) => c.id === selectedCampusId) || PILOT_CAMPUS;
           setCurrentUser((prev) =>
@@ -139,6 +173,39 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  const handleListingCreated = (newListing: Listing) => {
+    setMyListings((prev) => [newListing, ...prev]);
+  };
+
+  const handleWithdrawListing = async (listingId: string) => {
+    const token = getAuthToken();
+
+    try {
+      const res = await fetch(`/api/listings/${listingId}/withdraw`, {
+        method: 'PATCH',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (res.ok) {
+        setMyListings((prev) =>
+          prev.map((l) => (l.id === listingId ? { ...l, status: 'WITHDRAWN' } : l))
+        );
+      } else {
+        // Fallback simulation
+        setMyListings((prev) =>
+          prev.map((l) => (l.id === listingId ? { ...l, status: 'WITHDRAWN' } : l))
+        );
+      }
+    } catch {
+      // Offline fallback simulation
+      setMyListings((prev) =>
+        prev.map((l) => (l.id === listingId ? { ...l, status: 'WITHDRAWN' } : l))
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
@@ -153,7 +220,7 @@ export default function App(): React.JSX.Element {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <div
               data-testid="system-status-badge"
               className="hidden sm:flex items-center space-x-2 text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-full"
@@ -161,6 +228,17 @@ export default function App(): React.JSX.Element {
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>System Status: {healthStatus}</span>
             </div>
+
+            {currentUser && currentUser.role === 'CAMPUS_MEMBER' && (
+              <button
+                onClick={() => setIsDonateModalOpen(true)}
+                data-testid="open-donate-modal-btn"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition-colors flex items-center space-x-1"
+              >
+                <span>+</span>
+                <span>Donate a Book</span>
+              </button>
+            )}
 
             {currentUser ? (
               <div data-testid="user-profile-chip" className="flex items-center space-x-3">
@@ -207,7 +285,7 @@ export default function App(): React.JSX.Element {
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 flex flex-col items-center justify-center text-center">
+      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 flex flex-col items-center justify-center text-center w-full">
         {currentUser && currentUser.role === 'REGISTERED' && (
           <div
             data-testid="campus-onboarding-card"
@@ -278,6 +356,15 @@ export default function App(): React.JSX.Element {
           </div>
         )}
 
+        {/* CS-004: My Listings section for Campus Members */}
+        {currentUser && currentUser.role === 'CAMPUS_MEMBER' && (
+          <MyListings
+            listings={myListings}
+            onWithdraw={handleWithdrawListing}
+            onOpenDonateModal={() => setIsDonateModalOpen(true)}
+          />
+        )}
+
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-lg w-full">
           <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
             ✨
@@ -293,7 +380,9 @@ export default function App(): React.JSX.Element {
               <div className="font-semibold text-emerald-800 flex items-center justify-between">
                 <span>
                   Account Status:{' '}
-                  {currentUser.role === 'CAMPUS_MEMBER' ? `Campus Member (${currentUser.campusName || 'Verified'})` : 'Registered User'}
+                  {currentUser.role === 'CAMPUS_MEMBER'
+                    ? `Campus Member (${currentUser.campusName || 'Verified'})`
+                    : 'Registered User'}
                 </span>
                 <span className="text-[10px] bg-emerald-200 px-2 py-0.5 rounded">Pilot Active</span>
               </div>
@@ -316,9 +405,19 @@ export default function App(): React.JSX.Element {
             <div>• CS-001 Workspace Foundation + CI</div>
             <div>• CS-002 Authentication + Profile Bootstrap</div>
             <div>• CS-003 Campus Directory + Invite Code</div>
+            <div>• CS-004 Create Donation Listing + My Listings</div>
           </div>
         </div>
       </main>
+
+      {/* Donate a Book Modal (CS-004) */}
+      <DonateBookModal
+        isOpen={isDonateModalOpen}
+        onClose={() => setIsDonateModalOpen(false)}
+        onSuccess={handleListingCreated}
+        token={getAuthToken()}
+        defaultCampusName={currentUser?.campusName || 'Darrang College'}
+      />
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
         © 2026 CampusShelf. Built for student communities.

@@ -114,4 +114,97 @@ describe('App Root Shell (Frontend Seam)', () => {
     // Onboarding card disappears once user is a Campus Member
     expect(screen.queryByTestId('campus-onboarding-card')).not.toBeInTheDocument();
   });
+
+  it('renders "Donate a Book" button for Campus Members and opens the donation modal', async () => {
+    render(<App />);
+
+    // Sign in and join campus
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Donate button should be visible
+    const donateBtn = await screen.findByTestId('open-donate-modal-btn');
+    expect(donateBtn).toBeInTheDocument();
+    expect(donateBtn).toHaveTextContent(/Donate a Book/i);
+
+    // Click opens modal
+    fireEvent.click(donateBtn);
+    expect(screen.getByTestId('donate-book-modal')).toBeInTheDocument();
+    expect(screen.getByText(/Book Condition Guide/i)).toBeInTheDocument();
+  });
+
+  it('validates required fields, previews photos, creates listing and allows withdrawal', async () => {
+    render(<App />);
+
+    // Sign in and join campus
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Open donate modal
+    const donateBtn = await screen.findByTestId('open-donate-modal-btn');
+    fireEvent.click(donateBtn);
+
+    // Submit with empty fields shows error
+    const publishBtn = screen.getByTestId('submit-listing-btn');
+    fireEvent.click(publishBtn);
+    expect(await screen.findByTestId('listing-form-error')).toBeInTheDocument();
+
+    // Fill valid book metadata
+    fireEvent.change(screen.getByTestId('input-title'), {
+      target: { value: 'University Physics with Modern Physics' },
+    });
+    fireEvent.change(screen.getByTestId('input-author'), {
+      target: { value: 'Young and Freedman' },
+    });
+    fireEvent.change(screen.getByTestId('input-subject'), {
+      target: { value: 'Physics' },
+    });
+    fireEvent.change(screen.getByTestId('input-pickup-location'), {
+      target: { value: 'Central Library Entrance' },
+    });
+
+    // Add photo
+    const photoInput = screen.getByTestId('input-photo-url');
+    fireEvent.change(photoInput, {
+      target: { value: 'https://supabase.co/storage/v1/object/public/listings/sample.jpg' },
+    });
+    const addPhotoBtn = screen.getByTestId('add-photo-btn');
+    fireEvent.click(addPhotoBtn);
+
+    // Photo preview should appear
+    expect(screen.getByTestId('photo-preview-0')).toBeInTheDocument();
+
+    // Submit listing
+    fireEvent.click(publishBtn);
+
+    // Modal should close and listing should be in My Listings
+    await waitFor(() => {
+      expect(screen.queryByTestId('donate-book-modal')).not.toBeInTheDocument();
+    });
+
+    // Check listing rendered in My Listings
+    const listingCard = await screen.findByTestId('my-listing-card');
+    expect(listingCard).toBeInTheDocument();
+    expect(within(listingCard).getByText(/University Physics with Modern Physics/i)).toBeInTheDocument();
+    expect(within(listingCard).getByText(/AVAILABLE/i)).toBeInTheDocument();
+
+    // Withdraw listing
+    const withdrawBtn = within(listingCard).getByTestId('withdraw-listing-btn');
+    fireEvent.click(withdrawBtn);
+
+    // Status changes to WITHDRAWN
+    await waitFor(() => {
+      expect(within(listingCard).getByText(/WITHDRAWN/i)).toBeInTheDocument();
+    });
+  });
 });

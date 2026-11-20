@@ -99,6 +99,7 @@ export function createTestClient(app: Express) {
     get: (path: string) => new TestRequest(app, 'GET', path),
     post: (path: string) => new TestRequest(app, 'POST', path),
     put: (path: string) => new TestRequest(app, 'PUT', path),
+    patch: (path: string) => new TestRequest(app, 'PATCH', path),
     delete: (path: string) => new TestRequest(app, 'DELETE', path),
   };
 }

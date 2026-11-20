@@ -4,6 +4,7 @@ import { env } from './config/env';
 import { healthRoutes } from './modules/health/health.routes';
 import { userRoutes } from './modules/user/user.routes';
 import { campusRoutes } from './modules/campus/campus.routes';
+import { listingRoutes } from './modules/listing/listing.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -22,6 +23,10 @@ export function createApp(): Express {
   // Mount campus directory and invite redemption endpoints
   app.use('/campuses', campusRoutes);
   app.use('/api/campuses', campusRoutes);
+
+  // Mount listing endpoints (CS-004)
+  app.use('/listings', listingRoutes);
+  app.use('/api/listings', listingRoutes);
 
   return app;
 }

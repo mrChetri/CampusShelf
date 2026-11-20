@@ -14,6 +14,7 @@ model User {
   role      String    @default("REGISTERED")
   campusId  String?
   campus    Campus?   @relation(fields: [campusId], references: [id])
+  listings  Listing[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -29,6 +30,7 @@ model Campus {
   active      Boolean            @default(true)
   users       User[]
   inviteCodes CampusInviteCode[]
+  listings    Listing[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -47,4 +49,40 @@ model CampusInviteCode {
   createdAt DateTime  @default(now())
 
   @@map("campus_invite_codes")
+}
+
+model Listing {
+  id             String         @id @default(uuid())
+  donorId        String
+  donor          User           @relation(fields: [donorId], references: [id])
+  campusId       String
+  campus         Campus         @relation(fields: [campusId], references: [id])
+  title          String
+  author         String
+  isbn           String?
+  edition        String?
+  course         String?
+  subject        String
+  semester       String?
+  condition      String         @default("GOOD")
+  pickupLocation String
+  description    String?
+  status         String         @default("AVAILABLE")
+  type           String         @default("DONATION")
+  photos         ListingPhoto[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("listings")
+}
+
+model ListingPhoto {
+  id        String   @id @default(uuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("listing_photos")
 }
