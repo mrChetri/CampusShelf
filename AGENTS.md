@@ -91,8 +91,8 @@ Once a ticket is implemented:
   6. Never force-delete (`-D`) branches or discard uncommitted changes.
 
 ### 7. Git & Environment Safety
-- On Windows, execute Git state-changing commands (`git add`, `git commit`, `git checkout`, `git switch`, `git branch`, `git clean`) with `BypassSandbox: true` directly to avoid AppContainer loose-object write permission blocks.
-- **Interactive Terminal Operations**: If an operation blocks, hangs, or requires interactive credential prompts (e.g. `git push` requiring Git Credential Manager desktop authentication, browser OAuth, or MFA), do not keep retrying or hanging in the background. Stop immediately, explain the issue, and provide the exact command for the user to run directly in their own terminal.
+- On Windows, execute Git state-changing commands (`git add`, `git commit`, `git checkout`, `git switch`, `git branch`, `git clean`, `git push`) with `BypassSandbox: true` directly to avoid AppContainer loose-object write permission blocks.
+- **Git Credential & Push Configuration**: The default GitHub account is configured as `mrChetri` (`credential.https://github.com.username mrChetri` and `origin` remote URL bound to `mrChetri`), allowing direct non-blocking `git push` operations.
 - Never modify `.git` internal files or directory structures manually.
 - Never alter Windows folder permissions (`icacls`, `attrib`) to bypass Git errors without explicit approval.
 - Never reset (`git reset --hard`), clean (`git clean -fdx`), force-push, or discard user changes without permission.

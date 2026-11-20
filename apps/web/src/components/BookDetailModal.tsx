@@ -1,0 +1,225 @@
+import React, { useState } from 'react';
+import type { PublicListing } from '@campusshelf/contracts';
+
+interface BookDetailModalProps {
+  isOpen: boolean;
+  listing: PublicListing | null;
+  onClose: () => void;
+  isCampusMember?: boolean;
+}
+
+const CONDITION_GUIDE: Record<string, string> = {
+  NEW: 'Brand new, unread, perfect condition with no marks.',
+  LIKE_NEW: 'Looks almost new with minimal or no signs of wear.',
+  GOOD: 'Clean copy with intact spine, pages may have light notes or highlighting.',
+  FAIR: 'Readable, complete copy; may have noticeable cover wear or notes.',
+  POOR: 'Well-worn copy, all essential study pages intact.',
+};
+
+export const BookDetailModal: React.FC<BookDetailModalProps> = ({
+  isOpen,
+  listing,
+  onClose,
+  isCampusMember = false,
+}) => {
+  const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
+
+  if (!isOpen || !listing) return null;
+
+  const photos = listing.photos && listing.photos.length > 0 ? listing.photos : [];
+  const currentPhoto = photos[activePhotoIndex] || photos[0];
+
+  return (
+    <div
+      data-testid="book-detail-modal"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+        {/* Header */}
+        <div className="flex items-start justify-between p-5 border-b border-slate-100 bg-slate-50/70">
+          <div>
+            <div className="flex items-center space-x-2 mb-1.5 flex-wrap gap-y-1">
+              {listing.type === 'DONATION' ? (
+                <span
+                  data-testid="badge-donation"
+                  className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider"
+                >
+                  🎁 Free Donation
+                </span>
+              ) : (
+                <span
+                  data-testid="badge-sale"
+                  className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider"
+                >
+                  🏷️ For Sale
+                </span>
+              )}
+              <span className="bg-slate-200 text-slate-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                {listing.condition}
+              </span>
+              <span className="text-xs text-slate-500 font-medium">
+                {listing.status === 'AVAILABLE' ? '🟢 Available' : listing.status}
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 leading-snug">{listing.title}</h2>
+            <p className="text-sm text-slate-600">by {listing.author}</p>
+          </div>
+          <button
+            onClick={onClose}
+            data-testid="close-detail-modal-btn"
+            className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-lg transition-colors"
+            aria-label="Close modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+          {/* Photo Gallery */}
+          {photos.length > 0 && (
+            <div>
+              <div className="w-full h-64 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200 mb-2">
+                <img
+                  src={currentPhoto}
+                  alt={listing.title}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              {photos.length > 1 && (
+                <div className="flex space-x-2 overflow-x-auto pb-1">
+                  {photos.map((url, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActivePhotoIndex(idx)}
+                      className={`w-16 h-16 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all ${
+                        activePhotoIndex === idx
+                          ? 'border-emerald-600 ring-2 ring-emerald-200'
+                          : 'border-slate-200 opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Book Metadata Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl text-xs border border-slate-100">
+            <div>
+              <span className="text-slate-500 block">Subject / Department</span>
+              <span className="font-semibold text-slate-800">{listing.subject}</span>
+            </div>
+            {listing.course && (
+              <div>
+                <span className="text-slate-500 block">Course</span>
+                <span className="font-semibold text-slate-800">{listing.course}</span>
+              </div>
+            )}
+            {listing.semester && (
+              <div>
+                <span className="text-slate-500 block">Semester</span>
+                <span className="font-semibold text-slate-800">{listing.semester}</span>
+              </div>
+            )}
+            {listing.edition && (
+              <div>
+                <span className="text-slate-500 block">Edition / Year</span>
+                <span className="font-semibold text-slate-800">{listing.edition}</span>
+              </div>
+            )}
+            {listing.isbn && (
+              <div>
+                <span className="text-slate-500 block">ISBN</span>
+                <span className="font-semibold text-slate-800 font-mono">{listing.isbn}</span>
+              </div>
+            )}
+            <div>
+              <span className="text-slate-500 block">Campus</span>
+              <span className="font-semibold text-slate-800">{listing.campusName || 'Pilot Campus'}</span>
+            </div>
+          </div>
+
+          {/* Condition Explanation */}
+          <div className="border-l-4 border-emerald-500 bg-emerald-50/50 p-3.5 rounded-r-lg text-xs">
+            <span className="font-bold text-emerald-900 block mb-0.5">Condition: {listing.condition}</span>
+            <p className="text-emerald-800 leading-relaxed">
+              {CONDITION_GUIDE[listing.condition] || 'Verified condition by student.'}
+            </p>
+          </div>
+
+          {/* Safe Pickup Zone & Trust Verification */}
+          <div className="space-y-3">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-1.5">
+              <div className="flex items-center space-x-1.5 font-bold text-slate-800">
+                <span>📍 Safe Campus Pickup Zone:</span>
+                <span className="text-emerald-700">{listing.pickupLocation}</span>
+              </div>
+              <p className="text-slate-500">
+                Safe handovers take place in well-lit, public campus locations (libraries, student centers, department lobbies).
+              </p>
+            </div>
+
+            {/* Trust Label */}
+            <div className="bg-amber-50/70 border border-amber-200/80 p-3.5 rounded-xl text-xs flex items-start space-x-2.5">
+              <span className="text-base leading-none">🛡️</span>
+              <div>
+                <span className="font-bold text-amber-900 block">Handover-Verified Integrity</span>
+                <p className="text-amber-800 text-[11px] leading-relaxed mt-0.5">
+                  A book is counted as donated only after a real handover is confirmed between students. No fake credits or unverified claims.
+                </p>
+              </div>
+            </div>
+
+            {/* Donor Information & Strict Privacy Guarantee */}
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
+              <div>
+                <span className="text-slate-500 block text-[11px]">Offered by</span>
+                <span className="font-semibold text-slate-800">{listing.donorName}</span>
+              </div>
+              <div className="text-right text-[11px] text-slate-400">
+                🔒 Privacy Protected (Contact hidden)
+              </div>
+            </div>
+          </div>
+
+          {listing.description && (
+            <div>
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Donor Notes</h4>
+              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap">
+                {listing.description}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer CTA */}
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+          <button
+            onClick={onClose}
+            className="text-xs font-semibold text-slate-600 hover:text-slate-800 px-4 py-2 rounded-lg"
+          >
+            Back to Browse
+          </button>
+
+          {isCampusMember ? (
+            <button
+              disabled
+              title="Request flow enabled in Ticket CS-006"
+              className="bg-emerald-600 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow opacity-90 cursor-not-allowed flex items-center space-x-1.5"
+            >
+              <span>Request This Book</span>
+              <span className="text-[10px] opacity-75">(Next: CS-006)</span>
+            </button>
+          ) : (
+            <div className="text-xs text-slate-500 italic">
+              Join your campus as a Campus Member to request books.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

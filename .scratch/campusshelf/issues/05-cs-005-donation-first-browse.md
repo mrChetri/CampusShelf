@@ -4,10 +4,10 @@
 
 **Blocked by:** 04: CS-004 Create Donation Listing
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] `GET /listings` endpoint supports text search, campus scoping (defaulting to member's campus), and filters
-- [ ] Feed orders available free donations first, with clear badges and pagination
-- [ ] Book detail view displays condition, photos, general campus pickup area, and trust label
-- [ ] Private contact information (phone, email, full address) is hidden from public view
-- [ ] Empty search states and loading skeletons match design standards
+- [x] `GET /listings` endpoint supports text search, campus scoping (defaulting to member's campus), and filters
+- [x] Feed orders available free donations first, with clear badges and pagination
+- [x] Book detail view displays condition, photos, general campus pickup area, and trust label
+- [x] Private contact information (phone, email, full address) is hidden from public view
+- [x] Empty search states and loading skeletons match design standards

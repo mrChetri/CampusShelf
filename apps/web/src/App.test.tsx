@@ -2,18 +2,229 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import App from './App';
 
+const mockListings = [
+  {
+    id: 'b1111111-2222-3333-4444-555555555551',
+    donorId: 'd1111111-2222-3333-4444-555555555551',
+    donorName: 'Priya Das',
+    campusId: '550e8400-e29b-41d4-a716-446655440000',
+    campusName: 'Darrang College',
+    title: 'University Physics',
+    author: 'Young and Freedman',
+    isbn: '9780135159552',
+    edition: '15th',
+    course: 'B.Sc Physics',
+    subject: 'Physics',
+    semester: '1st Semester',
+    condition: 'GOOD',
+    pickupLocation: 'Central Library Entrance',
+    photos: ['https://example.com/physics.jpg'],
+    description: 'Clean copy with neat notes.',
+    status: 'AVAILABLE',
+    type: 'DONATION',
+    createdAt: '2026-11-20T10:00:00.000Z',
+    updatedAt: '2026-11-20T10:00:00.000Z',
+  },
+  {
+    id: 'b1111111-2222-3333-4444-555555555552',
+    donorId: 'd1111111-2222-3333-4444-555555555552',
+    donorName: 'Rahul Verma',
+    campusId: '550e8400-e29b-41d4-a716-446655440000',
+    campusName: 'Darrang College',
+    title: 'Organic Chemistry',
+    author: 'Paula Bruice',
+    isbn: '9780134042282',
+    edition: '8th',
+    course: 'B.Sc Chemistry',
+    subject: 'Chemistry',
+    semester: '2nd Semester',
+    condition: 'LIKE_NEW',
+    pickupLocation: 'Science Block Lobby',
+    photos: ['https://example.com/chem.jpg'],
+    description: 'Barely used.',
+    status: 'AVAILABLE',
+    type: 'SALE',
+    createdAt: '2026-11-19T10:00:00.000Z',
+    updatedAt: '2026-11-19T10:00:00.000Z',
+  },
+  {
+    id: 'b1111111-2222-3333-4444-555555555553',
+    donorId: 'd1111111-2222-3333-4444-555555555553',
+    donorName: 'Ananya Roy',
+    campusId: '660e8400-e29b-41d4-a716-446655440000',
+    campusName: 'Tezpur University',
+    title: 'Introduction to Algorithms',
+    author: 'Cormen et al.',
+    isbn: '9780262033848',
+    edition: '3rd',
+    course: 'B.Tech CSE',
+    subject: 'Computer Science',
+    semester: '3rd Semester',
+    condition: 'NEW',
+    pickupLocation: 'Dean Office Lobby',
+    photos: ['https://example.com/algo.jpg'],
+    description: 'Brand new condition.',
+    status: 'AVAILABLE',
+    type: 'DONATION',
+    createdAt: '2026-11-18T10:00:00.000Z',
+    updatedAt: '2026-11-18T10:00:00.000Z',
+  },
+];
+
 describe('App Root Shell (Frontend Seam)', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockImplementation((url: string) => {
+      vi.fn().mockImplementation((url: string, options?: RequestInit) => {
         if (url.includes('/api/health')) {
           return Promise.resolve({
+            ok: true,
             json: async () => ({
               status: 'ok',
               environment: 'test',
               uptime: 10,
               timestamp: new Date().toISOString(),
+            }),
+          });
+        }
+        if (url.includes('/api/campuses/redeem-invite')) {
+          let body: any = {};
+          try {
+            body = options?.body ? JSON.parse(options.body as string) : {};
+          } catch {}
+          if (body.code === 'DARRANG-PILOT-2026') {
+            return Promise.resolve({
+              ok: true,
+              json: async () => ({
+                user: {
+                  id: '11111111-2222-3333-4444-555555555555',
+                  email: 'student@darrang.edu',
+                  fullName: 'Aarav Sharma',
+                  role: 'CAMPUS_MEMBER',
+                  campusId: body.campusId || '550e8400-e29b-41d4-a716-446655440000',
+                  campusName: 'Darrang College',
+                  avatarUrl: null,
+                  createdAt: new Date().toISOString(),
+                },
+              }),
+            });
+          }
+          return Promise.resolve({
+            ok: false,
+            status: 400,
+            json: async () => ({ error: 'Invalid or expired campus invite code. Please check with your student union.' }),
+          });
+        }
+        if (url.includes('/api/campuses')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              campuses: [
+                {
+                  id: '550e8400-e29b-41d4-a716-446655440000',
+                  name: 'Darrang College',
+                  slug: 'darrang-college',
+                  city: 'Tezpur',
+                  state: 'Assam',
+                  active: true,
+                },
+              ],
+            }),
+          });
+        }
+        if (url.includes('/api/listings/mine')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ listings: [] }),
+          });
+        }
+        if (url.includes('/withdraw')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              success: true,
+              message: 'Listing withdrawn',
+              listing: { status: 'WITHDRAWN' },
+            }),
+          });
+        }
+        if (options?.method === 'POST' && url.endsWith('/api/listings')) {
+          let body: any = {};
+          try {
+            body = options?.body ? JSON.parse(options.body as string) : {};
+          } catch {}
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              listing: {
+                id: 'new-listing-id-1234',
+                donorId: '11111111-2222-3333-4444-555555555555',
+                donorName: 'Aarav Sharma',
+                campusId: '550e8400-e29b-41d4-a716-446655440000',
+                campusName: 'Darrang College',
+                title: body.title || 'New Book',
+                author: body.author || 'Author',
+                condition: body.condition || 'GOOD',
+                pickupLocation: body.pickupLocation || 'Library',
+                photos: body.photos || ['https://example.com/p.jpg'],
+                status: 'AVAILABLE',
+                type: 'DONATION',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            }),
+          });
+        }
+        if (url.includes('/api/listings/') && !url.includes('/api/listings/mine')) {
+          const listingId = url.split('/api/listings/')[1]?.split('?')[0];
+          const found = mockListings.find((l) => l.id === listingId);
+          if (found) {
+            return Promise.resolve({
+              ok: true,
+              json: async () => ({ listing: found }),
+            });
+          }
+        }
+        if (url.includes('/api/listings')) {
+          const parsedUrl = new URL(url, 'http://localhost');
+          const search = parsedUrl.searchParams.get('search')?.toLowerCase();
+          const campusId = parsedUrl.searchParams.get('campusId');
+          const condition = parsedUrl.searchParams.get('condition');
+          const type = parsedUrl.searchParams.get('type');
+
+          let results = [...mockListings];
+          if (search) {
+            results = results.filter(
+              (l) =>
+                l.title.toLowerCase().includes(search) ||
+                l.author.toLowerCase().includes(search) ||
+                (l.isbn && l.isbn.toLowerCase().includes(search))
+            );
+          }
+          if (campusId) {
+            results = results.filter((l) => l.campusId === campusId);
+          }
+          if (condition) {
+            results = results.filter((l) => l.condition === condition);
+          }
+          if (type) {
+            results = results.filter((l) => l.type === type);
+          }
+
+          results.sort((a, b) => {
+            if (a.type === 'DONATION' && b.type !== 'DONATION') return -1;
+            if (a.type !== 'DONATION' && b.type === 'DONATION') return 1;
+            return 0;
+          });
+
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              listings: results,
+              total: results.length,
+              page: 1,
+              limit: 12,
+              hasMore: false,
             }),
           });
         }
@@ -205,6 +416,101 @@ describe('App Root Shell (Frontend Seam)', () => {
     // Status changes to WITHDRAWN
     await waitFor(() => {
       expect(within(listingCard).getByText(/WITHDRAWN/i)).toBeInTheDocument();
+    });
+  });
+
+  it('renders public discovery feed with donation-first books for guest users', async () => {
+    render(<App />);
+
+    const feed = await screen.findByTestId('discovery-feed');
+    expect(feed).toBeInTheDocument();
+
+    // Books should be rendered in the feed
+    await waitFor(() => {
+      expect(screen.getByText('University Physics')).toBeInTheDocument();
+      expect(screen.getByText('Organic Chemistry')).toBeInTheDocument();
+    });
+
+    // Check donation badges
+    const donationBadges = screen.getAllByTestId('badge-donation');
+    expect(donationBadges.length).toBeGreaterThan(0);
+    expect(donationBadges[0]).toHaveTextContent(/FREE DONATION/i);
+
+    // Free donations must be ordered before paid listings
+    const bookCards = screen.getAllByTestId(/^book-card-/);
+    expect(bookCards[0]).toHaveTextContent(/University Physics/i);
+  });
+
+  it('filters discovery feed by text search (title, author, ISBN)', async () => {
+    render(<App />);
+
+    await screen.findByTestId('discovery-feed');
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'Paula' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Organic Chemistry')).toBeInTheDocument();
+      expect(screen.queryByText('University Physics')).not.toBeInTheDocument();
+    });
+  });
+
+  it('filters discovery feed by condition and campus scope', async () => {
+    render(<App />);
+
+    await screen.findByTestId('discovery-feed');
+
+    const conditionFilter = screen.getByTestId('filter-condition');
+    fireEvent.change(conditionFilter, { target: { value: 'LIKE_NEW' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Organic Chemistry')).toBeInTheDocument();
+      expect(screen.queryByText('University Physics')).not.toBeInTheDocument();
+    });
+  });
+
+  it('displays loading skeleton while fetching and empty state when no listings match', async () => {
+    render(<App />);
+
+    await screen.findByTestId('discovery-feed');
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'NonexistentBookTitle12345' } });
+
+    const emptyState = await screen.findByTestId('listings-empty-state');
+    expect(emptyState).toBeInTheDocument();
+    expect(emptyState).toHaveTextContent(/No books found matching your criteria/i);
+  });
+
+  it('opens Book Detail Modal on card click, showing condition, safe pickup zone, trust label, and strictly hiding private contact info', async () => {
+    render(<App />);
+
+    await screen.findByTestId('discovery-feed');
+
+    const card = screen.getByTestId('book-card-b1111111-2222-3333-4444-555555555551');
+    fireEvent.click(card);
+
+    const modal = await screen.findByTestId('book-detail-modal');
+    expect(modal).toBeInTheDocument();
+
+    expect(within(modal).getByText('University Physics')).toBeInTheDocument();
+    expect(within(modal).getByText(/Young and Freedman/i)).toBeInTheDocument();
+    expect(within(modal).getByText(/Central Library Entrance/i)).toBeInTheDocument();
+    expect(within(modal).getByText(/Handover-Verified/i)).toBeInTheDocument();
+    expect(within(modal).getByText(/Priya Das/i)).toBeInTheDocument();
+
+    // STRICT PRIVACY: Private donor information must NOT be present
+    expect(within(modal).queryByText(/@darrang\.edu/i)).not.toBeInTheDocument();
+    expect(within(modal).queryByText(/\+91/i)).not.toBeInTheDocument();
+    expect(within(modal).queryByText(/phone/i)).not.toBeInTheDocument();
+    expect(within(modal).queryByText(/email:/i)).not.toBeInTheDocument();
+
+    // Close modal
+    const closeBtn = screen.getByTestId('close-detail-modal-btn');
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('book-detail-modal')).not.toBeInTheDocument();
     });
   });
 });

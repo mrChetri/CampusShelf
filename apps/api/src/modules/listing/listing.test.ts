@@ -249,4 +249,126 @@ describe('Listing Module Seam (CS-004)', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('GET /api/listings (Public Browse Feed - CS-005)', () => {
+    beforeEach(async () => {
+      // Create test dataset:
+      // 1. Asha creates Physics book (Donation, Good, Darrang College)
+      await request
+        .post('/api/listings')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          title: 'University Physics with Modern Physics',
+          author: 'Young and Freedman',
+          isbn: '978-0133969290',
+          course: 'B.Sc Physics',
+          subject: 'Physics',
+          semester: 'Semester 1',
+          condition: 'GOOD',
+          pickupLocation: 'Central Library Entrance',
+          photos: ['https://example.com/p1.jpg'],
+        });
+
+      // 2. Priya creates Organic Chemistry book (Donation, Like New, Darrang College)
+      await request
+        .post('/api/listings')
+        .set('Authorization', `Bearer ${otherMemberToken}`)
+        .send({
+          title: 'Organic Chemistry',
+          author: 'Morrison and Boyd',
+          isbn: '978-0136436690',
+          course: 'B.Sc Chemistry',
+          subject: 'Chemistry',
+          semester: 'Semester 2',
+          condition: 'LIKE_NEW',
+          pickupLocation: 'College Canteen',
+          photos: ['https://example.com/p2.jpg'],
+        });
+    });
+
+    it('allows guest visitors to browse listings without authentication', async () => {
+      const res = await request.get('/api/listings');
+
+      expect(res.status).toBe(200);
+      expect(res.body.listings).toBeDefined();
+      expect(res.body.listings).toHaveLength(2);
+      expect(res.body.total).toBe(2);
+      expect(res.body.page).toBe(1);
+    });
+
+    it('filters listings by text search on title, author, or ISBN', async () => {
+      // Search by author "Young"
+      const resAuthor = await request.get('/api/listings?search=Young');
+      expect(resAuthor.status).toBe(200);
+      expect(resAuthor.body.listings).toHaveLength(1);
+      expect(resAuthor.body.listings[0].title).toBe('University Physics with Modern Physics');
+
+      // Search by ISBN fragment
+      const resIsbn = await request.get('/api/listings?search=6436690');
+      expect(resIsbn.status).toBe(200);
+      expect(resIsbn.body.listings).toHaveLength(1);
+      expect(resIsbn.body.listings[0].title).toBe('Organic Chemistry');
+    });
+
+    it('filters listings by campus scope and condition', async () => {
+      const resCampus = await request.get(`/api/listings?campusId=${pilotCampusId}`);
+      expect(resCampus.status).toBe(200);
+      expect(resCampus.body.listings).toHaveLength(2);
+
+      const resCondition = await request.get('/api/listings?condition=LIKE_NEW');
+      expect(resCondition.status).toBe(200);
+      expect(resCondition.body.listings).toHaveLength(1);
+      expect(resCondition.body.listings[0].condition).toBe('LIKE_NEW');
+    });
+
+    it('hides private donor contact info (email/phone/address) from public view', async () => {
+      const res = await request.get('/api/listings');
+      expect(res.status).toBe(200);
+
+      const listing = res.body.listings[0];
+      expect(listing.donorName).toBeDefined();
+      expect(listing.email).toBeUndefined();
+      expect(listing.phone).toBeUndefined();
+      expect(listing.phoneNumber).toBeUndefined();
+      expect(listing.fullAddress).toBeUndefined();
+    });
+  });
+
+  describe('GET /api/listings/:id (Book Detail View - CS-005)', () => {
+    let sampleListingId: string;
+
+    beforeEach(async () => {
+      const res = await request
+        .post('/api/listings')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          title: 'Concepts of Physics Vol 1',
+          author: 'H.C. Verma',
+          isbn: '978-8177091878',
+          subject: 'Physics',
+          condition: 'LIKE_NEW',
+          pickupLocation: 'Library Front Gate',
+          photos: ['https://example.com/hc1.jpg', 'https://example.com/hc2.jpg'],
+          description: 'Includes solutions supplement.',
+        });
+      sampleListingId = res.body.listing.id;
+    });
+
+    it('returns 200 with full book details and photos for a valid ID', async () => {
+      const res = await request.get(`/api/listings/${sampleListingId}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.listing).toBeDefined();
+      expect(res.body.listing.title).toBe('Concepts of Physics Vol 1');
+      expect(res.body.listing.photos).toHaveLength(2);
+      expect(res.body.listing.pickupLocation).toBe('Library Front Gate');
+      expect(res.body.listing.description).toBe('Includes solutions supplement.');
+    });
+
+    it('returns 404 for a non-existent listing ID', async () => {
+      const res = await request.get('/api/listings/00000000-0000-0000-0000-000000000000');
+      expect(res.status).toBe(404);
+      expect(res.body.error).toMatch(/not found/i);
+    });
+  });
 });
