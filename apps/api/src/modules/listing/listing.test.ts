@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { createTestClient } from '../../test-utils/test-client';
+import supertest from 'supertest';
 import { createApp } from '../../app';
 import { userService } from '../user/user.service';
 import { campusService } from '../campus/campus.service';
@@ -22,7 +22,7 @@ describe('Listing Module Seam (CS-004)', () => {
 
   beforeEach(() => {
     app = createApp();
-    request = createTestClient(app);
+    request = supertest(app);
     campusService.resetForTesting();
     listingService.resetForTesting();
 
