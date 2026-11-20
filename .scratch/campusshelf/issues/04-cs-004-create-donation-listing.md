@@ -4,10 +4,10 @@
 
 **Blocked by:** 03: CS-003 Campus Directory + Invite Code
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] Prisma schema includes `Listing` entity with `AVAILABLE` state and relational user/campus links
-- [ ] Direct browser upload to Supabase Storage configured with bucket security policies
-- [ ] `POST /listings` endpoint validates listing payload with Zod and binds ownership to authenticated user
-- [ ] Frontend "Donate a Book" form with validation, image preview, condition guide, and submission state
-- [ ] Donor can view and withdraw their own available listings in "My Listings"
+- [x] Prisma schema includes `Listing` entity with `AVAILABLE` state and relational user/campus links
+- [x] Direct browser upload to Supabase Storage configured with bucket security policies
+- [x] `POST /listings` endpoint validates listing payload with Zod and binds ownership to authenticated user
+- [x] Frontend "Donate a Book" form with validation, image preview, condition guide, and submission state
+- [x] Donor can view and withdraw their own available listings in "My Listings"
