@@ -4,9 +4,9 @@
 
 **Blocked by:** 05: CS-005 Donation-First Browse + Detail
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] Prisma schema includes `BookRequest` model with `PENDING`, `ACCEPTED`, `DECLINED`, `CANCELLED`, `COMPLETED` states
-- [ ] `POST /listings/:id/requests` validates request rules: member cannot request own book; one active request per user per book
-- [ ] Requester can view their active and past requests with statuses in "My Requests"
-- [ ] Requester can cancel their own pending request before donor decision
+- [x] Prisma schema includes `BookRequest` model with `PENDING`, `ACCEPTED`, `DECLINED`, `CANCELLED`, `COMPLETED` states
+- [x] `POST /listings/:id/requests` validates request rules: member cannot request own book; one active request per user per book
+- [x] Requester can view their active and past requests with statuses in "My Requests"
+- [x] Requester can cancel their own pending request before donor decision

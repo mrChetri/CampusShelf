@@ -82,4 +82,47 @@ describe('BookDetailModal Component', () => {
     const mainImg = screen.getByAltText(sampleListing.title) as HTMLImageElement;
     expect(mainImg.src).toBe('https://example.com/pages.jpg');
   });
+
+  it('displays "Your Listing" badge when donor views their own book, preventing self-request', () => {
+    render(
+      <BookDetailModal
+        isOpen={true}
+        listing={sampleListing}
+        onClose={vi.fn()}
+        isCampusMember={true}
+        currentUserId={sampleListing.donorId}
+      />
+    );
+
+    expect(screen.getByTestId('own-listing-badge')).toBeInTheDocument();
+    expect(screen.getByText(/Your Listing/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('open-request-form-btn')).not.toBeInTheDocument();
+  });
+
+  it('allows Campus Member to open request form, input note, and submit request successfully', async () => {
+    const handleRequest = vi.fn().mockResolvedValue(true);
+    render(
+      <BookDetailModal
+        isOpen={true}
+        listing={sampleListing}
+        onClose={vi.fn()}
+        isCampusMember={true}
+        currentUserId="student-other-id"
+        onRequestListing={handleRequest}
+      />
+    );
+
+    // Click "Request This Book"
+    const openFormBtn = screen.getByTestId('open-request-form-btn');
+    fireEvent.click(openFormBtn);
+
+    // Form inputs appear
+    const noteInput = screen.getByTestId('request-note-input');
+    const submitBtn = screen.getByTestId('submit-request-btn');
+
+    fireEvent.change(noteInput, { target: { value: 'Hi! Need this for Mechanical Engineering exams.' } });
+    fireEvent.click(submitBtn);
+
+    expect(handleRequest).toHaveBeenCalledWith(sampleListing.id, 'Hi! Need this for Mechanical Engineering exams.');
+  });
 });

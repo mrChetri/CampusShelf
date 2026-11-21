@@ -132,6 +132,50 @@ describe('App Root Shell (Frontend Seam)', () => {
             }),
           });
         }
+        if (url.includes('/api/requests/mine')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ requests: [] }),
+          });
+        }
+        if (url.includes('/api/requests/') && url.includes('/cancel')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              success: true,
+              message: 'Request cancelled successfully',
+              request: { id: 'req-cancelled', status: 'CANCELLED' },
+            }),
+          });
+        }
+        if (options?.method === 'POST' && url.includes('/requests')) {
+          let body: any = {};
+          try {
+            body = options?.body ? JSON.parse(options.body as string) : {};
+          } catch {}
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              request: {
+                id: 'req-1234',
+                listingId: 'b1111111-2222-3333-4444-555555555551',
+                listingTitle: 'University Physics',
+                listingAuthor: 'Young and Freedman',
+                listingPhoto: 'https://example.com/physics.jpg',
+                pickupLocation: 'Central Library Entrance',
+                campusName: 'Darrang College',
+                donorId: 'd1111111-2222-3333-4444-555555555551',
+                donorName: 'Priya Das',
+                requesterId: '11111111-2222-3333-4444-555555555555',
+                requesterName: 'Aarav Sharma',
+                status: 'PENDING',
+                message: body.message || null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            }),
+          });
+        }
         if (url.includes('/api/listings/mine')) {
           return Promise.resolve({
             ok: true,
@@ -511,6 +555,100 @@ describe('App Root Shell (Frontend Seam)', () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId('book-detail-modal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('allows Campus Member to request an available book and tracks it in My Requests', async () => {
+    render(<App />);
+
+    // Sign in and join campus
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Verify member navigation tabs are present
+    const navTabs = await screen.findByTestId('member-nav-tabs');
+    expect(navTabs).toBeInTheDocument();
+
+    // Click book card to open detail modal
+    const card = await screen.findByTestId('book-card-b1111111-2222-3333-4444-555555555551');
+    fireEvent.click(card);
+
+    const modal = await screen.findByTestId('book-detail-modal');
+    expect(modal).toBeInTheDocument();
+
+    // Open request form
+    const openFormBtn = screen.getByTestId('open-request-form-btn');
+    fireEvent.click(openFormBtn);
+
+    const noteInput = screen.getByTestId('request-note-input');
+    fireEvent.change(noteInput, { target: { value: 'Need for physics class' } });
+
+    const submitRequestBtn = screen.getByTestId('submit-request-btn');
+    fireEvent.click(submitRequestBtn);
+
+    // Should show requested pending badge
+    await waitFor(() => {
+      expect(screen.getByTestId('request-pending-badge')).toBeInTheDocument();
+    });
+
+    // Close modal
+    fireEvent.click(screen.getByTestId('close-detail-modal-btn'));
+
+    // Switch to My Requests tab
+    const requestsTab = screen.getByTestId('tab-requests');
+    fireEvent.click(requestsTab);
+
+    // Verify request card rendered in My Requests view
+    const requestCard = await screen.findByTestId('request-card');
+    expect(requestCard).toBeInTheDocument();
+    expect(within(requestCard).getByText('University Physics')).toBeInTheDocument();
+    expect(within(requestCard).getByText('PENDING')).toBeInTheDocument();
+  });
+
+  it('allows requester to cancel their own pending request in My Requests', async () => {
+    render(<App />);
+
+    // Sign in and join campus
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Request a book
+    const card = await screen.findByTestId('book-card-b1111111-2222-3333-4444-555555555551');
+    fireEvent.click(card);
+
+    const openFormBtn = await screen.findByTestId('open-request-form-btn');
+    fireEvent.click(openFormBtn);
+
+    const submitRequestBtn = screen.getByTestId('submit-request-btn');
+    fireEvent.click(submitRequestBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('request-pending-badge')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('close-detail-modal-btn'));
+
+    // Switch to My Requests
+    const requestsTab = screen.getByTestId('tab-requests');
+    fireEvent.click(requestsTab);
+
+    const requestCard = await screen.findByTestId('request-card');
+    const cancelBtn = within(requestCard).getByTestId('cancel-request-btn');
+    fireEvent.click(cancelBtn);
+
+    // Status transitions to CANCELLED
+    await waitFor(() => {
+      expect(within(requestCard).getByText('CANCELLED')).toBeInTheDocument();
     });
   });
 });

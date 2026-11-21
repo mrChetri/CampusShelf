@@ -15,6 +15,7 @@ model User {
   campusId  String?
   campus    Campus?   @relation(fields: [campusId], references: [id])
   listings  Listing[]
+  requests  BookRequest[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -70,6 +71,7 @@ model Listing {
   status         String         @default("AVAILABLE")
   type           String         @default("DONATION")
   photos         ListingPhoto[]
+  requests       BookRequest[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -85,4 +87,18 @@ model ListingPhoto {
   createdAt DateTime @default(now())
 
   @@map("listing_photos")
+}
+
+model BookRequest {
+  id          String   @id @default(uuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  requesterId String
+  requester   User     @relation(fields: [requesterId], references: [id])
+  message     String?
+  status      String   @default("PENDING") // PENDING, ACCEPTED, DECLINED, CANCELLED, COMPLETED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("book_requests")
 }
