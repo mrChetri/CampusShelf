@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { listingController } from './listing.controller';
+import { requestController } from '../request/request.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 
 export const listingRoutes = Router();
@@ -22,6 +23,11 @@ listingRoutes.get('/:id', (req, res) =>
 // Create donation listing (Campus Members only)
 listingRoutes.post('/', authMiddleware, (req, res) =>
   listingController.createListing(req, res)
+);
+
+// Submit request for a book listing (CS-006)
+listingRoutes.post('/:id/requests', authMiddleware, (req, res) =>
+  requestController.createListingRequest(req, res)
 );
 
 // Withdraw own listing

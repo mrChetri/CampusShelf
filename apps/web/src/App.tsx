@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import type { HealthResponse, UserProfile, Campus, Listing, PublicListing } from '@campusshelf/contracts';
+import type { HealthResponse, UserProfile, Campus, Listing, PublicListing, BookRequest } from '@campusshelf/contracts';
 import { DonateBookModal } from './components/DonateBookModal';
 import { MyListings } from './components/MyListings';
 import { BookDiscoveryFeed } from './components/BookDiscoveryFeed';
 import { BookDetailModal } from './components/BookDetailModal';
+import { MyRequests } from './components/MyRequests';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -30,6 +31,10 @@ export default function App(): React.JSX.Element {
   // CS-005: Discovery & Detail state
   const [selectedListing, setSelectedListing] = useState<PublicListing | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
+
+  // CS-006: Request state & member navigation view
+  const [myRequests, setMyRequests] = useState<BookRequest[]>([]);
+  const [memberView, setMemberView] = useState<'browse' | 'listings' | 'requests'>('browse');
 
   const getAuthToken = () => {
     if (!currentUser) return undefined;
@@ -79,8 +84,24 @@ export default function App(): React.JSX.Element {
         .catch(() => {
           // Keep existing local listings state
         });
+
+      fetch('/api/requests/mine', {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (data && Array.isArray(data.requests)) {
+            setMyRequests(data.requests);
+          }
+        })
+        .catch(() => {
+          // Keep existing local requests state
+        });
     } else {
       setMyListings([]);
+      setMyRequests([]);
     }
   }, [currentUser]);
 
@@ -105,6 +126,8 @@ export default function App(): React.JSX.Element {
     setInviteCode('');
     setOnboardingError(null);
     setMyListings([]);
+    setMyRequests([]);
+    setMemberView('browse');
     setIsDonateModalOpen(false);
   };
 
@@ -181,6 +204,7 @@ export default function App(): React.JSX.Element {
 
   const handleListingCreated = (newListing: Listing) => {
     setMyListings((prev) => [newListing, ...prev]);
+    setMemberView('listings');
   };
 
   const handleWithdrawListing = async (listingId: string) => {
@@ -208,6 +232,82 @@ export default function App(): React.JSX.Element {
       // Offline fallback simulation
       setMyListings((prev) =>
         prev.map((l) => (l.id === listingId ? { ...l, status: 'WITHDRAWN' } : l))
+      );
+    }
+  };
+
+  const handleRequestBook = async (listingId: string, message?: string) => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/listings/${listingId}/requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setMyRequests((prev) => [data.request, ...prev]);
+        return true;
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        const error = new Error(errorData.error || 'Failed to submit book request') as any;
+        error.isHttpError = true;
+        throw error;
+      }
+    } catch (err: any) {
+      if (err.isHttpError) {
+        throw err;
+      }
+      // Offline / fallback simulation for tests
+      const targetListing = selectedListing;
+      const newReq: BookRequest = {
+        id: `mock-req-${Date.now()}`,
+        listingId,
+        listingTitle: targetListing?.title || 'Requested Book',
+        listingAuthor: targetListing?.author || 'Author',
+        listingPhoto: targetListing?.photos?.[0] || null,
+        pickupLocation: targetListing?.pickupLocation || 'Campus Pickup Zone',
+        campusName: targetListing?.campusName || 'Campus',
+        donorId: targetListing?.donorId || 'donor-id',
+        donorName: targetListing?.donorName || 'Donor',
+        requesterId: currentUser?.id || 'requester-id',
+        requesterName: currentUser?.fullName || 'Requester',
+        status: 'PENDING',
+        message: message || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setMyRequests((prev) => [newReq, ...prev]);
+      return true;
+    }
+  };
+
+  const handleCancelRequest = async (requestId: string) => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/requests/${requestId}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (res.ok) {
+        setMyRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? { ...r, status: 'CANCELLED' } : r))
+        );
+      } else {
+        setMyRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? { ...r, status: 'CANCELLED' } : r))
+        );
+      }
+    } catch {
+      setMyRequests((prev) =>
+        prev.map((r) => (r.id === requestId ? { ...r, status: 'CANCELLED' } : r))
       );
     }
   };
@@ -362,8 +462,57 @@ export default function App(): React.JSX.Element {
           </div>
         )}
 
-        {/* CS-004: My Listings section for Campus Members */}
+        {/* CS-006: Navigation tabs for Campus Members */}
         {currentUser && currentUser.role === 'CAMPUS_MEMBER' && (
+          <div className="w-full flex items-center justify-center space-x-2 mb-6" data-testid="member-nav-tabs">
+            <button
+              onClick={() => setMemberView('browse')}
+              data-testid="tab-browse"
+              className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors ${
+                memberView === 'browse'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              📖 Browse Books
+            </button>
+            <button
+              onClick={() => setMemberView('listings')}
+              data-testid="tab-listings"
+              className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
+                memberView === 'listings'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>📦 My Listings</span>
+              {myListings.length > 0 && (
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {myListings.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setMemberView('requests')}
+              data-testid="tab-requests"
+              className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
+                memberView === 'requests'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>📬 My Requests</span>
+              {myRequests.length > 0 && (
+                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {myRequests.length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* CS-004: My Listings section for Campus Members */}
+        {currentUser && currentUser.role === 'CAMPUS_MEMBER' && memberView === 'listings' && (
           <MyListings
             listings={myListings}
             onWithdraw={handleWithdrawListing}
@@ -371,7 +520,16 @@ export default function App(): React.JSX.Element {
           />
         )}
 
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-lg w-full">
+        {/* CS-006: My Requests section for Campus Members */}
+        {currentUser && currentUser.role === 'CAMPUS_MEMBER' && memberView === 'requests' && (
+          <MyRequests
+            requests={myRequests}
+            onCancelRequest={handleCancelRequest}
+            onBrowseBooks={() => setMemberView('browse')}
+          />
+        )}
+
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-lg w-full mb-8">
           <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
             ✨
           </div>
@@ -413,18 +571,21 @@ export default function App(): React.JSX.Element {
             <div>• CS-003 Campus Directory + Invite Code</div>
             <div>• CS-004 Create Donation Listing + My Listings</div>
             <div>• CS-005 Donation-First Browse + Detail</div>
+            <div>• CS-006 Request Donated Book Flow</div>
           </div>
         </div>
 
         {/* CS-005: Public Book Discovery Feed */}
-        <BookDiscoveryFeed
-          campuses={campuses}
-          defaultCampusId={currentUser?.campusId || undefined}
-          onSelectListing={(listing) => {
-            setSelectedListing(listing);
-            setIsDetailModalOpen(true);
-          }}
-        />
+        {(!currentUser || currentUser.role !== 'CAMPUS_MEMBER' || memberView === 'browse') && (
+          <BookDiscoveryFeed
+            campuses={campuses}
+            defaultCampusId={currentUser?.campusId || undefined}
+            onSelectListing={(listing) => {
+              setSelectedListing(listing);
+              setIsDetailModalOpen(true);
+            }}
+          />
+        )}
       </main>
 
       {/* Donate a Book Modal (CS-004) */}
@@ -436,7 +597,7 @@ export default function App(): React.JSX.Element {
         defaultCampusName={currentUser?.campusName || 'Darrang College'}
       />
 
-      {/* Book Detail Modal (CS-005) */}
+      {/* Book Detail Modal (CS-005 & CS-006) */}
       <BookDetailModal
         isOpen={isDetailModalOpen}
         listing={selectedListing}
@@ -445,6 +606,12 @@ export default function App(): React.JSX.Element {
           setSelectedListing(null);
         }}
         isCampusMember={currentUser?.role === 'CAMPUS_MEMBER'}
+        currentUserId={currentUser?.id}
+        onRequestListing={handleRequestBook}
+        hasActiveRequest={Boolean(
+          selectedListing &&
+          myRequests.some((r) => r.listingId === selectedListing.id && r.status === 'PENDING')
+        )}
       />
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">

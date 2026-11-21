@@ -5,6 +5,7 @@ import { healthRoutes } from './modules/health/health.routes';
 import { userRoutes } from './modules/user/user.routes';
 import { campusRoutes } from './modules/campus/campus.routes';
 import { listingRoutes } from './modules/listing/listing.routes';
+import { requestRoutes } from './modules/request/request.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -27,6 +28,10 @@ export function createApp(): Express {
   // Mount listing endpoints (CS-004)
   app.use('/listings', listingRoutes);
   app.use('/api/listings', listingRoutes);
+
+  // Mount book request endpoints (CS-006)
+  app.use('/requests', requestRoutes);
+  app.use('/api/requests', requestRoutes);
 
   return app;
 }

@@ -6,6 +6,9 @@ interface BookDetailModalProps {
   listing: PublicListing | null;
   onClose: () => void;
   isCampusMember?: boolean;
+  currentUserId?: string;
+  onRequestListing?: (listingId: string, message?: string) => Promise<boolean | void>;
+  hasActiveRequest?: boolean;
 }
 
 const CONDITION_GUIDE: Record<string, string> = {
@@ -21,13 +24,41 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
   listing,
   onClose,
   isCampusMember = false,
+  currentUserId,
+  onRequestListing,
+  hasActiveRequest = false,
 }) => {
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
+  const [isRequesting, setIsRequesting] = useState<boolean>(false);
+  const [requestNote, setRequestNote] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [requestSuccess, setRequestSuccess] = useState<boolean>(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   if (!isOpen || !listing) return null;
 
+  const isOwner = Boolean(currentUserId && listing.donorId === currentUserId);
   const photos = listing.photos && listing.photos.length > 0 ? listing.photos : [];
   const currentPhoto = photos[activePhotoIndex] || photos[0];
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onRequestListing) return;
+
+    setIsSubmitting(true);
+    setRequestError(null);
+
+    try {
+      await onRequestListing(listing.id, requestNote.trim() || undefined);
+      setRequestSuccess(true);
+      setIsRequesting(false);
+      setRequestNote('');
+    } catch (err: any) {
+      setRequestError(err.message || 'Failed to submit request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div
@@ -195,6 +226,53 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
           )}
         </div>
 
+        {/* Request Form (Expandable) */}
+        {isRequesting && (
+          <div className="p-4 bg-emerald-50/70 border-t border-emerald-100">
+            <form onSubmit={handleFormSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-emerald-900 mb-1">
+                  Optional Note for Donor ({500 - requestNote.length} characters left)
+                </label>
+                <textarea
+                  data-testid="request-note-input"
+                  rows={2}
+                  maxLength={500}
+                  value={requestNote}
+                  onChange={(e) => setRequestNote(e.target.value)}
+                  placeholder="e.g. Taking this course this semester, will pick up at the library."
+                  className="w-full text-xs p-2.5 rounded-lg border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                />
+              </div>
+
+              {requestError && (
+                <div data-testid="request-error-alert" className="text-xs text-rose-700 bg-rose-50 p-2 rounded-lg">
+                  {requestError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end space-x-2">
+                <button
+                  type="button"
+                  data-testid="cancel-request-form-btn"
+                  onClick={() => setIsRequesting(false)}
+                  className="text-xs text-slate-600 hover:text-slate-800 px-3 py-1.5 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  data-testid="submit-request-btn"
+                  disabled={isSubmitting}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow disabled:opacity-50 transition-colors"
+                >
+                  {isSubmitting ? 'Sending Request...' : 'Send Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* Footer CTA */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
           <button
@@ -204,15 +282,31 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
             Back to Browse
           </button>
 
-          {isCampusMember ? (
-            <button
-              disabled
-              title="Request flow enabled in Ticket CS-006"
-              className="bg-emerald-600 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow opacity-90 cursor-not-allowed flex items-center space-x-1.5"
+          {isOwner ? (
+            <span
+              data-testid="own-listing-badge"
+              className="bg-slate-200 text-slate-700 text-xs font-bold px-3.5 py-1.5 rounded-lg"
             >
-              <span>Request This Book</span>
-              <span className="text-[10px] opacity-75">(Next: CS-006)</span>
-            </button>
+              Your Listing
+            </span>
+          ) : hasActiveRequest || requestSuccess ? (
+            <span
+              data-testid="request-pending-badge"
+              className="bg-amber-100 text-amber-800 text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center space-x-1"
+            >
+              <span>⏳</span>
+              <span>Requested (Pending)</span>
+            </span>
+          ) : isCampusMember ? (
+            !isRequesting && (
+              <button
+                onClick={() => setIsRequesting(true)}
+                data-testid="open-request-form-btn"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow flex items-center space-x-1.5 transition-colors"
+              >
+                <span>Request This Book</span>
+              </button>
+            )
           ) : (
             <div className="text-xs text-slate-500 italic">
               Join your campus as a Campus Member to request books.
