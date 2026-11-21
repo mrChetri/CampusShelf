@@ -245,4 +245,234 @@ describe('Book Request Module Seam (CS-006)', () => {
       expect(listRes.body.requests[0].status).toBe('CANCELLED');
     });
   });
+
+  describe('GET /api/listings/:id/requests (CS-007 Donor Request Inbox)', () => {
+    let reqId1: string;
+    let reqId2: string;
+
+    beforeEach(async () => {
+      // Bootstrap second requester as Campus Member
+      userService.getOrCreateProfile({
+        id: otherStudentId,
+        email: 'other@darrang.edu',
+        fullName: 'Bikash Nath',
+        avatarUrl: null,
+      });
+      userService.updateProfile(otherStudentId, {
+        role: 'CAMPUS_MEMBER',
+        campusId: pilotCampusId,
+      });
+
+      const res1 = await request
+        .post(`/api/listings/${donorListingId}/requests`)
+        .set('Authorization', `Bearer ${requesterToken}`)
+        .send({ message: 'First request' });
+      reqId1 = res1.body.request.id;
+
+      const res2 = await request
+        .post(`/api/listings/${donorListingId}/requests`)
+        .set('Authorization', `Bearer ${otherStudentToken}`)
+        .send({ message: 'Second request' });
+      reqId2 = res2.body.request.id;
+    });
+
+    it('returns 401 Unauthorized when unauthenticated', async () => {
+      const res = await request.get(`/api/listings/${donorListingId}/requests`);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 403 Forbidden when another student tries to view requests for a listing they do not own', async () => {
+      const res = await request
+        .get(`/api/listings/${donorListingId}/requests`)
+        .set('Authorization', `Bearer ${requesterToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toMatch(/do not own this listing/i);
+    });
+
+    it('returns 404 when listing does not exist', async () => {
+      const res = await request
+        .get('/api/listings/99999999-9999-4999-a999-999999999999/requests')
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      expect(res.status).toBe(404);
+    });
+
+    it('allows listing owner (donor) to view all incoming requests', async () => {
+      const res = await request
+        .get(`/api/listings/${donorListingId}/requests`)
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.requests).toHaveLength(2);
+      expect(res.body.requests.map((r: any) => r.id)).toContain(reqId1);
+      expect(res.body.requests.map((r: any) => r.id)).toContain(reqId2);
+    });
+  });
+
+  describe('POST /api/requests/:id/accept (CS-007 Accept Request & 72h Reservation)', () => {
+    let reqId1: string;
+    let reqId2: string;
+
+    beforeEach(async () => {
+      // Bootstrap second requester as Campus Member
+      userService.getOrCreateProfile({
+        id: otherStudentId,
+        email: 'other@darrang.edu',
+        fullName: 'Bikash Nath',
+        avatarUrl: null,
+      });
+      userService.updateProfile(otherStudentId, {
+        role: 'CAMPUS_MEMBER',
+        campusId: pilotCampusId,
+      });
+
+      const res1 = await request
+        .post(`/api/listings/${donorListingId}/requests`)
+        .set('Authorization', `Bearer ${requesterToken}`)
+        .send({ message: 'I need it for physics' });
+      reqId1 = res1.body.request.id;
+
+      const res2 = await request
+        .post(`/api/listings/${donorListingId}/requests`)
+        .set('Authorization', `Bearer ${otherStudentToken}`)
+        .send({ message: 'I also need this book' });
+      reqId2 = res2.body.request.id;
+    });
+
+    it('returns 401 Unauthorized when unauthenticated', async () => {
+      const res = await request.post(`/api/requests/${reqId1}/accept`);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 403 Forbidden when non-owner attempts to accept a request', async () => {
+      const res = await request
+        .post(`/api/requests/${reqId1}/accept`)
+        .set('Authorization', `Bearer ${requesterToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toMatch(/do not own this listing/i);
+    });
+
+    it('returns 404 when request does not exist', async () => {
+      const res = await request
+        .post('/api/requests/99999999-9999-4999-a999-999999999999/accept')
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      expect(res.status).toBe(404);
+    });
+
+    it('locks listing as RESERVED, marks request ACCEPTED, auto-declines competing requests, and establishes 72h window', async () => {
+      const res = await request
+        .post(`/api/requests/${reqId1}/accept`)
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.request.id).toBe(reqId1);
+      expect(res.body.request.status).toBe('ACCEPTED');
+      expect(res.body.request.reservedUntil).toBeDefined();
+
+      // Verify 72-hour handover window (within a tolerance of 1 minute)
+      const reservedUntilTime = new Date(res.body.request.reservedUntil).getTime();
+      const expectedTime = Date.now() + 72 * 60 * 60 * 1000;
+      expect(Math.abs(reservedUntilTime - expectedTime)).toBeLessThan(60000);
+
+      // Verify listing state
+      expect(res.body.listing.status).toBe('RESERVED');
+      expect(res.body.listing.reservedUntil).toBe(res.body.request.reservedUntil);
+
+      // Verify competing request auto-declined
+      const requestsRes = await request
+        .get(`/api/listings/${donorListingId}/requests`)
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      const competing = requestsRes.body.requests.find((r: any) => r.id === reqId2);
+      expect(competing.status).toBe('DECLINED');
+      expect(competing.declineReason).toMatch(/Another request was accepted/i);
+    });
+
+    it('prevents double-booking concurrency: second accept on reserved listing returns 409 Conflict', async () => {
+      // First accept succeeds
+      const res1 = await request
+        .post(`/api/requests/${reqId1}/accept`)
+        .set('Authorization', `Bearer ${donorToken}`);
+      expect(res1.status).toBe(200);
+
+      // Attempting to accept a second request on the same reserved listing must fail
+      const res2 = await request
+        .post(`/api/requests/${reqId2}/accept`)
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      expect(res2.status).toBe(409);
+      expect(res2.body.error).toMatch(/already reserved or unavailable/i);
+    });
+  });
+
+  describe('POST /api/requests/:id/decline (CS-007 Decline Request)', () => {
+    let reqId: string;
+
+    beforeEach(async () => {
+      const res = await request
+        .post(`/api/listings/${donorListingId}/requests`)
+        .set('Authorization', `Bearer ${requesterToken}`)
+        .send({ message: 'Requesting book' });
+      reqId = res.body.request.id;
+    });
+
+    it('returns 401 Unauthorized when unauthenticated', async () => {
+      const res = await request.post(`/api/requests/${reqId}/decline`);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 403 Forbidden when non-owner attempts to decline a request', async () => {
+      const res = await request
+        .post(`/api/requests/${reqId}/decline`)
+        .set('Authorization', `Bearer ${requesterToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toMatch(/do not own this listing/i);
+    });
+
+    it('declines individual request with optional note while keeping listing AVAILABLE', async () => {
+      const res = await request
+        .post(`/api/requests/${reqId}/decline`)
+        .set('Authorization', `Bearer ${donorToken}`)
+        .send({ reason: 'Already promised to a lab partner' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.request.status).toBe('DECLINED');
+      expect(res.body.request.declineReason).toBe('Already promised to a lab partner');
+
+      // Verify listing remains AVAILABLE
+      const listingRes = await request.get(`/api/listings/${donorListingId}`);
+      expect(listingRes.body.listing.status).toBe('AVAILABLE');
+    });
+
+    it('returns 400 Bad Request when attempting to decline an already cancelled or declined request', async () => {
+      // First decline
+      await request
+        .post(`/api/requests/${reqId}/decline`)
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      // Second decline
+      const res2 = await request
+        .post(`/api/requests/${reqId}/decline`)
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      expect(res2.status).toBe(400);
+      expect(res2.body.error).toMatch(/only pending requests can be declined/i);
+    });
+
+    it('returns 400 Bad Request when decline reason exceeds character limit (validation check)', async () => {
+      const res = await request
+        .post(`/api/requests/${reqId}/decline`)
+        .set('Authorization', `Bearer ${donorToken}`)
+        .send({ reason: 'A'.repeat(301) });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/validation failed/i);
+    });
+  });
 });

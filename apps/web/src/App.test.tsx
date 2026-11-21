@@ -651,4 +651,58 @@ describe('App Root Shell (Frontend Seam)', () => {
       expect(within(requestCard).getByText('CANCELLED')).toBeInTheDocument();
     });
   });
+
+  it('allows donor to view incoming requests in My Listings (CS-007)', async () => {
+    render(<App />);
+
+    // Sign in and join campus
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Create a listing first
+    const donateBtn = await screen.findByTestId('open-donate-modal-btn');
+    fireEvent.click(donateBtn);
+
+    const publishBtn = await screen.findByTestId('submit-listing-btn');
+    fireEvent.change(screen.getByTestId('input-title'), { target: { value: 'Organic Chemistry' } });
+    fireEvent.change(screen.getByTestId('input-author'), { target: { value: 'Paula Bruice' } });
+    fireEvent.change(screen.getByTestId('input-subject'), { target: { value: 'Chemistry' } });
+    fireEvent.change(screen.getByTestId('input-pickup-location'), { target: { value: 'Chemistry Lab 2' } });
+
+    const photoInput = screen.getByTestId('input-photo-url');
+    fireEvent.change(photoInput, {
+      target: { value: 'https://example.com/chem.jpg' },
+    });
+    fireEvent.click(screen.getByTestId('add-photo-btn'));
+
+    fireEvent.click(publishBtn);
+
+    // Modal should close
+    await waitFor(() => {
+      expect(screen.queryByTestId('donate-book-modal')).not.toBeInTheDocument();
+    });
+
+    // Should switch to listings tab with the newly created listing
+    const listingCard = await screen.findByTestId('my-listing-card');
+    expect(listingCard).toBeInTheDocument();
+
+    // View requests button is present
+    const viewRequestsBtn = within(listingCard).getByRole('button', { name: /View Requests/i });
+    fireEvent.click(viewRequestsBtn);
+
+    // Donor request modal opens
+    const modal = await screen.findByTestId('donor-request-modal');
+    expect(modal).toBeInTheDocument();
+
+    // Close modal
+    fireEvent.click(screen.getByTestId('close-donor-modal-btn'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('donor-request-modal')).not.toBeInTheDocument();
+    });
+  });
 });

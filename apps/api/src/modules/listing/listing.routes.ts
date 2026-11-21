@@ -30,6 +30,11 @@ listingRoutes.post('/:id/requests', authMiddleware, (req, res) =>
   requestController.createListingRequest(req, res)
 );
 
+// View incoming requests for a listing (CS-007 donor inbox)
+listingRoutes.get('/:id/requests', authMiddleware, (req, res) =>
+  requestController.getListingRequests(req, res)
+);
+
 // Withdraw own listing
 listingRoutes.patch('/:id/withdraw', authMiddleware, (req, res) =>
   listingController.withdrawListing(req, res)

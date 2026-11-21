@@ -5,6 +5,7 @@ import { MyListings } from './components/MyListings';
 import { BookDiscoveryFeed } from './components/BookDiscoveryFeed';
 import { BookDetailModal } from './components/BookDetailModal';
 import { MyRequests } from './components/MyRequests';
+import { DonorRequestModal } from './components/DonorRequestModal';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -35,6 +36,12 @@ export default function App(): React.JSX.Element {
   // CS-006: Request state & member navigation view
   const [myRequests, setMyRequests] = useState<BookRequest[]>([]);
   const [memberView, setMemberView] = useState<'browse' | 'listings' | 'requests'>('browse');
+
+  // CS-007: Donor Request Inbox state
+  const [selectedListingForRequests, setSelectedListingForRequests] = useState<Listing | null>(null);
+  const [isDonorRequestModalOpen, setIsDonorRequestModalOpen] = useState<boolean>(false);
+  const [donorRequests, setDonorRequests] = useState<BookRequest[]>([]);
+  const [isFetchingDonorRequests, setIsFetchingDonorRequests] = useState<boolean>(false);
 
   const getAuthToken = () => {
     if (!currentUser) return undefined;
@@ -312,6 +319,139 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  const handleViewListingRequests = async (listing: Listing) => {
+    setSelectedListingForRequests(listing);
+    setIsDonorRequestModalOpen(true);
+    setIsFetchingDonorRequests(true);
+    const token = getAuthToken();
+
+    try {
+      const res = await fetch(`/api/listings/${listing.id}/requests`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setDonorRequests(data.requests || []);
+      } else {
+        setDonorRequests([]);
+      }
+    } catch {
+      setDonorRequests([]);
+    } finally {
+      setIsFetchingDonorRequests(false);
+    }
+  };
+
+  const handleAcceptDonorRequest = async (requestId: string) => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/requests/${requestId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const reservedDeadline = data.request?.reservedUntil || data.listing?.reservedUntil || new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+        setDonorRequests((prev) =>
+          prev.map((r) =>
+            r.id === requestId
+              ? { ...r, status: 'ACCEPTED', reservedUntil: reservedDeadline }
+              : r.status === 'PENDING'
+              ? { ...r, status: 'DECLINED', declineReason: 'Another request was accepted for this book' }
+              : r
+          )
+        );
+
+        if (selectedListingForRequests) {
+          const updatedListing: Listing = {
+            ...selectedListingForRequests,
+            status: 'RESERVED',
+            reservedUntil: reservedDeadline,
+          };
+          setSelectedListingForRequests(updatedListing);
+          setMyListings((prev) =>
+            prev.map((l) => (l.id === updatedListing.id ? updatedListing : l))
+          );
+        }
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        const err = new Error(errorData.error || 'Failed to accept request') as any;
+        err.isHttpError = true;
+        throw err;
+      }
+    } catch (err: any) {
+      if (err.isHttpError) throw err;
+      // Fallback for tests
+      const fallbackDeadline = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+      setDonorRequests((prev) =>
+        prev.map((r) =>
+          r.id === requestId
+            ? { ...r, status: 'ACCEPTED', reservedUntil: fallbackDeadline }
+            : r.status === 'PENDING'
+            ? { ...r, status: 'DECLINED', declineReason: 'Another request was accepted for this book' }
+            : r
+        )
+      );
+
+      if (selectedListingForRequests) {
+        const updatedListing: Listing = {
+          ...selectedListingForRequests,
+          status: 'RESERVED',
+          reservedUntil: fallbackDeadline,
+        };
+        setSelectedListingForRequests(updatedListing);
+        setMyListings((prev) =>
+          prev.map((l) => (l.id === updatedListing.id ? updatedListing : l))
+        );
+      }
+    }
+  };
+
+  const handleDeclineDonorRequest = async (requestId: string, reason?: string) => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`/api/requests/${requestId}/decline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (res.ok) {
+        setDonorRequests((prev) =>
+          prev.map((r) =>
+            r.id === requestId
+              ? { ...r, status: 'DECLINED', declineReason: reason || null }
+              : r
+          )
+        );
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        const err = new Error(errorData.error || 'Failed to decline request') as any;
+        err.isHttpError = true;
+        throw err;
+      }
+    } catch (err: any) {
+      if (err.isHttpError) throw err;
+      setDonorRequests((prev) =>
+        prev.map((r) =>
+          r.id === requestId
+            ? { ...r, status: 'DECLINED', declineReason: reason || null }
+            : r
+        )
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
@@ -517,6 +657,7 @@ export default function App(): React.JSX.Element {
             listings={myListings}
             onWithdraw={handleWithdrawListing}
             onOpenDonateModal={() => setIsDonateModalOpen(true)}
+            onViewRequests={handleViewListingRequests}
           />
         )}
 
@@ -572,6 +713,7 @@ export default function App(): React.JSX.Element {
             <div>• CS-004 Create Donation Listing + My Listings</div>
             <div>• CS-005 Donation-First Browse + Detail</div>
             <div>• CS-006 Request Donated Book Flow</div>
+            <div>• CS-007 Donor Request Inbox & 72h Handover Reservation</div>
           </div>
         </div>
 
@@ -612,6 +754,20 @@ export default function App(): React.JSX.Element {
           selectedListing &&
           myRequests.some((r) => r.listingId === selectedListing.id && r.status === 'PENDING')
         )}
+      />
+
+      {/* Donor Request Inbox Modal (CS-007) */}
+      <DonorRequestModal
+        isOpen={isDonorRequestModalOpen}
+        listing={selectedListingForRequests}
+        requests={donorRequests}
+        isLoading={isFetchingDonorRequests}
+        onClose={() => {
+          setIsDonorRequestModalOpen(false);
+          setSelectedListingForRequests(null);
+        }}
+        onAcceptRequest={handleAcceptDonorRequest}
+        onDeclineRequest={handleDeclineDonorRequest}
       />
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">

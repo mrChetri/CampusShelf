@@ -30,11 +30,19 @@ export const BookRequestSchema = z.object({
   requesterName: z.string(),
   status: RequestStatusEnum.default('PENDING'),
   message: z.string().nullable().optional(),
+  reservedUntil: z.string().datetime().nullable().optional(),
+  declineReason: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
 
 export type BookRequest = z.infer<typeof BookRequestSchema>;
+
+export const DeclineBookRequestInputSchema = z.object({
+  reason: z.string().trim().max(300, 'Reason cannot exceed 300 characters').optional(),
+});
+
+export type DeclineBookRequestInput = z.infer<typeof DeclineBookRequestInputSchema>;
 
 export const BookRequestResponseSchema = z.object({
   request: BookRequestSchema,
@@ -55,3 +63,30 @@ export const CancelBookRequestResponseSchema = z.object({
 });
 
 export type CancelBookRequestResponse = z.infer<typeof CancelBookRequestResponseSchema>;
+
+export const AcceptBookRequestResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  request: BookRequestSchema,
+  listing: z.object({
+    id: z.string().uuid(),
+    status: z.string(),
+    reservedUntil: z.string().datetime().nullable().optional(),
+  }),
+});
+
+export type AcceptBookRequestResponse = z.infer<typeof AcceptBookRequestResponseSchema>;
+
+export const DeclineBookRequestResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  request: BookRequestSchema,
+});
+
+export type DeclineBookRequestResponse = z.infer<typeof DeclineBookRequestResponseSchema>;
+
+export const ListingRequestsResponseSchema = z.object({
+  requests: z.array(BookRequestSchema),
+});
+
+export type ListingRequestsResponse = z.infer<typeof ListingRequestsResponseSchema>;
