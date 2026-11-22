@@ -6,6 +6,7 @@ interface MyListingsProps {
   onWithdraw: (listingId: string) => void;
   onOpenDonateModal: () => void;
   onViewRequests?: (listing: Listing) => void;
+  onCompleteHandover?: (listingId: string) => void;
 }
 
 export const MyListings: React.FC<MyListingsProps> = ({
@@ -13,6 +14,7 @@ export const MyListings: React.FC<MyListingsProps> = ({
   onWithdraw,
   onOpenDonateModal,
   onViewRequests,
+  onCompleteHandover,
 }) => {
   if (listings.length === 0) {
     return (
@@ -113,6 +115,17 @@ export const MyListings: React.FC<MyListingsProps> = ({
                   >
                     <span>📬</span>
                     <span>View Requests</span>
+                  </button>
+                )}
+                {listing.status === 'RESERVED' && onCompleteHandover && (
+                  <button
+                    onClick={() => onCompleteHandover(listing.id)}
+                    data-testid="mark-donated-btn"
+                    data-cy="complete-handover-btn"
+                    className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1 w-full sm:w-auto justify-center shadow-sm"
+                  >
+                    <span>🤝</span>
+                    <span>Mark as Donated</span>
                   </button>
                 )}
                 {isAvailable && (

@@ -5,6 +5,7 @@ interface MyRequestsProps {
   requests: BookRequest[];
   onCancelRequest: (requestId: string) => void;
   onBrowseBooks?: () => void;
+  onReportProblem?: (request: BookRequest) => void;
 }
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
@@ -13,12 +14,14 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   DECLINED: { label: 'DECLINED', className: 'bg-rose-100 text-rose-800' },
   CANCELLED: { label: 'CANCELLED', className: 'bg-slate-200 text-slate-700' },
   COMPLETED: { label: 'COMPLETED', className: 'bg-indigo-100 text-indigo-800' },
+  DISPUTED: { label: 'DISPUTED', className: 'bg-rose-100 text-rose-800' },
 };
 
 export const MyRequests: React.FC<MyRequestsProps> = ({
   requests,
   onCancelRequest,
   onBrowseBooks,
+  onReportProblem,
 }) => {
   if (requests.length === 0) {
     return (
@@ -102,6 +105,24 @@ export const MyRequests: React.FC<MyRequestsProps> = ({
                     </div>
                   )}
                 </div>
+                {req.status === 'ACCEPTED' && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-[11px] text-emerald-800 mb-3 flex items-start space-x-1.5">
+                    <span>🤝</span>
+                    <div>
+                      <strong className="font-semibold">Handover Scheduled:</strong> Meet donor at{' '}
+                      <strong>{req.pickupLocation}</strong> within 72 hours.
+                    </div>
+                  </div>
+                )}
+
+                {req.status === 'DISPUTED' && (
+                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-2.5 text-[11px] text-rose-800 mb-3 flex items-start space-x-1.5">
+                    <span>⚠️</span>
+                    <div>
+                      <strong className="font-semibold">Problem Reported:</strong> Under review by campus moderation.
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
@@ -109,15 +130,27 @@ export const MyRequests: React.FC<MyRequestsProps> = ({
                   {new Date(req.createdAt).toLocaleDateString()}
                 </span>
 
-                {req.status === 'PENDING' && (
-                  <button
-                    onClick={() => onCancelRequest(req.id)}
-                    data-testid="cancel-request-btn"
-                    className="text-rose-600 hover:text-rose-800 font-semibold text-xs transition-colors hover:underline"
-                  >
-                    Cancel Request
-                  </button>
-                )}
+                <div className="flex items-center space-x-2">
+                  {req.status === 'PENDING' && (
+                    <button
+                      onClick={() => onCancelRequest(req.id)}
+                      data-testid="cancel-request-btn"
+                      className="text-rose-600 hover:text-rose-800 font-semibold text-xs transition-colors hover:underline"
+                    >
+                      Cancel Request
+                    </button>
+                  )}
+
+                  {req.status === 'ACCEPTED' && onReportProblem && (
+                    <button
+                      onClick={() => onReportProblem(req)}
+                      data-testid="report-problem-btn"
+                      className="text-rose-600 hover:text-rose-800 font-semibold text-xs transition-colors hover:underline"
+                    >
+                      Report a Problem
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );

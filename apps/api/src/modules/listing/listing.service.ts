@@ -172,6 +172,43 @@ export class ListingService {
     this.listings.set(listingId, updated);
     return updated;
   }
+
+  public completeListing(listingId: string): Listing {
+    const listing = this.listings.get(listingId);
+    if (!listing) {
+      const err: any = new Error('Listing not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const updated: Listing = {
+      ...listing,
+      status: 'DONATED',
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.listings.set(listingId, updated);
+    return updated;
+  }
+
+  public revertListingToAvailable(listingId: string): Listing {
+    const listing = this.listings.get(listingId);
+    if (!listing) {
+      const err: any = new Error('Listing not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const updated: Listing = {
+      ...listing,
+      status: 'AVAILABLE',
+      reservedUntil: null,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.listings.set(listingId, updated);
+    return updated;
+  }
 }
 
 export const listingService = new ListingService();

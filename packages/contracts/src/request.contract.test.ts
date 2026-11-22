@@ -14,12 +14,13 @@ import {
 
 describe('Book Request Contracts (Seam 1)', () => {
   describe('RequestStatusEnum', () => {
-    it('accepts valid request states: PENDING, ACCEPTED, DECLINED, CANCELLED, COMPLETED', () => {
+    it('accepts valid request states: PENDING, ACCEPTED, DECLINED, CANCELLED, COMPLETED, DISPUTED', () => {
       expect(RequestStatusEnum.parse('PENDING')).toBe('PENDING');
       expect(RequestStatusEnum.parse('ACCEPTED')).toBe('ACCEPTED');
       expect(RequestStatusEnum.parse('DECLINED')).toBe('DECLINED');
       expect(RequestStatusEnum.parse('CANCELLED')).toBe('CANCELLED');
       expect(RequestStatusEnum.parse('COMPLETED')).toBe('COMPLETED');
+      expect(RequestStatusEnum.parse('DISPUTED')).toBe('DISPUTED');
     });
 
     it('rejects invalid request states', () => {

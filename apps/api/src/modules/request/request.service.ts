@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { BookRequest, CreateBookRequestInput } from './request.schema';
 import { listingService } from '../listing/listing.service';
 import { campusService } from '../campus/campus.service';
+import { handoverService } from '../handover/handover.service';
 
 export class RequestService {
   private requests: BookRequest[] = [];
@@ -128,6 +129,7 @@ export class RequestService {
   ): {
     request: BookRequest;
     listing: { id: string; status: string; reservedUntil: string };
+    handover?: any;
   } {
     const request = this.requests.find((r) => r.id === requestId);
     if (!request) {
@@ -181,6 +183,21 @@ export class RequestService {
       }
     }
 
+    // Initialize scheduled handover record (ADR-0001)
+    const handover = handoverService.createHandover({
+      listingId: listing.id,
+      listingTitle: listing.title,
+      listingAuthor: listing.author,
+      requestId: request.id,
+      donorId: listing.donorId,
+      donorName: listing.donorName,
+      recipientId: request.requesterId,
+      recipientName: request.requesterName,
+      pickupLocation: listing.pickupLocation,
+      scheduleNotes: request.message,
+      reservedUntil,
+    });
+
     return {
       request,
       listing: {
@@ -188,6 +205,7 @@ export class RequestService {
         status: 'RESERVED',
         reservedUntil,
       },
+      handover,
     };
   }
 
@@ -226,6 +244,42 @@ export class RequestService {
     request.declineReason = reason ? reason.trim() : null;
     request.updatedAt = new Date().toISOString();
 
+    return request;
+  }
+
+  public completeRequest(requestId: string): BookRequest {
+    const request = this.requests.find((r) => r.id === requestId);
+    if (!request) {
+      const err = new Error('Request not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+    request.status = 'COMPLETED';
+    request.updatedAt = new Date().toISOString();
+    return request;
+  }
+
+  public disputeRequest(requestId: string): BookRequest {
+    const request = this.requests.find((r) => r.id === requestId);
+    if (!request) {
+      const err = new Error('Request not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+    request.status = 'DISPUTED';
+    request.updatedAt = new Date().toISOString();
+    return request;
+  }
+
+  public expireRequest(requestId: string): BookRequest {
+    const request = this.requests.find((r) => r.id === requestId);
+    if (!request) {
+      const err = new Error('Request not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+    request.status = 'CANCELLED';
+    request.updatedAt = new Date().toISOString();
     return request;
   }
 

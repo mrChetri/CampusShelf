@@ -71,8 +71,11 @@ const mockListings = [
   },
 ];
 
+let customMineRequests: any[] = [];
+
 describe('App Root Shell (Frontend Seam)', () => {
   beforeEach(() => {
+    customMineRequests = [];
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string, options?: RequestInit) => {
@@ -135,7 +138,98 @@ describe('App Root Shell (Frontend Seam)', () => {
         if (url.includes('/api/requests/mine')) {
           return Promise.resolve({
             ok: true,
-            json: async () => ({ requests: [] }),
+            json: async () => ({ requests: customMineRequests }),
+          });
+        }
+        if ((!options?.method || options?.method === 'GET') && (url.includes('/api/requests/for-listing/') || (url.includes('/api/listings/') && url.endsWith('/requests')))) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              requests: [
+                {
+                  id: 'req-pending-for-donor',
+                  listingId: 'new-listing-id-1234',
+                  listingTitle: 'Organic Chemistry',
+                  listingAuthor: 'Paula Bruice',
+                  listingPhoto: 'https://example.com/chem.jpg',
+                  pickupLocation: 'Chemistry Lab 2',
+                  campusName: 'Darrang College',
+                  donorId: '11111111-2222-3333-4444-555555555555',
+                  donorName: 'Aarav Sharma',
+                  requesterId: '22222222-3333-4444-5555-666666666666',
+                  requesterName: 'Priya Das',
+                  status: 'PENDING',
+                  message: 'Need this for 2nd semester',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+            }),
+          });
+        }
+        if (url.includes('/api/requests/') && url.includes('/accept')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              request: {
+                id: 'req-pending-for-donor',
+                status: 'ACCEPTED',
+                reservedUntil: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
+              },
+              listing: {
+                id: 'new-listing-id-1234',
+                status: 'RESERVED',
+                reservedUntil: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
+              },
+            }),
+          });
+        }
+        if (url.includes('/api/handovers/by-listing/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              handover: {
+                id: 'handover-test-1234',
+                listingId: 'listing-1234',
+                donorId: '11111111-2222-3333-4444-555555555555',
+                recipientId: 'recipient-1234',
+                status: 'SCHEDULED',
+                campusPickupArea: 'Central Library Entrance',
+              },
+            }),
+          });
+        }
+        if (url.includes('/api/handovers/by-request/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              handover: {
+                id: 'handover-test-1234',
+                requestId: 'req-accepted-123',
+                donorId: 'd1111111-2222-3333-4444-555555555551',
+                recipientId: '11111111-2222-3333-4444-555555555555',
+                status: 'SCHEDULED',
+                campusPickupArea: 'Central Library Entrance',
+              },
+            }),
+          });
+        }
+        if (url.includes('/api/handovers/') && url.includes('/complete')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              handover: { id: 'handover-test-1234', status: 'COMPLETED' },
+              message: 'Handover marked as completed',
+            }),
+          });
+        }
+        if (url.includes('/api/handovers/') && url.includes('/dispute')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              handover: { id: 'handover-test-1234', status: 'DISPUTED' },
+              message: 'Problem reported successfully',
+            }),
           });
         }
         if (url.includes('/api/requests/') && url.includes('/cancel')) {
@@ -703,6 +797,141 @@ describe('App Root Shell (Frontend Seam)', () => {
     fireEvent.click(screen.getByTestId('close-donor-modal-btn'));
     await waitFor(() => {
       expect(screen.queryByTestId('donor-request-modal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('allows donor to mark reserved listing as completed ("Mark as Donated") (CS-008)', async () => {
+    render(<App />);
+
+    // Sign in and join campus
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Create a listing
+    const donateBtn = await screen.findByTestId('open-donate-modal-btn');
+    fireEvent.click(donateBtn);
+
+    const publishBtn = await screen.findByTestId('submit-listing-btn');
+    fireEvent.change(screen.getByTestId('input-title'), { target: { value: 'Organic Chemistry' } });
+    fireEvent.change(screen.getByTestId('input-author'), { target: { value: 'Paula Bruice' } });
+    fireEvent.change(screen.getByTestId('input-subject'), { target: { value: 'Chemistry' } });
+    fireEvent.change(screen.getByTestId('input-pickup-location'), { target: { value: 'Chemistry Lab 2' } });
+
+    const photoInput = screen.getByTestId('input-photo-url');
+    fireEvent.change(photoInput, { target: { value: 'https://example.com/chem.jpg' } });
+    fireEvent.click(screen.getByTestId('add-photo-btn'));
+    fireEvent.click(publishBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('donate-book-modal')).not.toBeInTheDocument();
+    });
+
+    const listingCard = await screen.findByTestId('my-listing-card');
+    const viewRequestsBtn = within(listingCard).getByRole('button', { name: /View Requests/i });
+    fireEvent.click(viewRequestsBtn);
+
+    // Accept incoming request to reserve book
+    const acceptBtn = await screen.findByTestId('accept-request-btn');
+    fireEvent.click(acceptBtn);
+
+    // Close donor modal
+    const closeBtn = screen.getByTestId('close-donor-modal-btn');
+    fireEvent.click(closeBtn);
+
+    // In My Listings, the listing is now RESERVED and has "Mark as Donated" button
+    await waitFor(() => {
+      expect(within(listingCard).getByText('RESERVED')).toBeInTheDocument();
+    });
+    const markDonatedBtn = within(listingCard).getByTestId('mark-donated-btn');
+    expect(markDonatedBtn).toBeInTheDocument();
+
+    // Donor clicks Mark as Donated
+    fireEvent.click(markDonatedBtn);
+
+    // Status updates to DONATED
+    await waitFor(() => {
+      expect(within(listingCard).getByText('DONATED')).toBeInTheDocument();
+    });
+  });
+
+  it('allows recipient to report a problem on accepted request (CS-008)', async () => {
+    // Recipient has an accepted request with 72h coordination active
+    customMineRequests = [
+      {
+        id: 'req-accepted-123',
+        listingId: 'b1111111-2222-3333-4444-555555555551',
+        listingTitle: 'University Physics',
+        listingAuthor: 'Young and Freedman',
+        listingPhoto: 'https://example.com/physics.jpg',
+        pickupLocation: 'Central Library Entrance',
+        campusName: 'Darrang College',
+        donorId: 'd1111111-2222-3333-4444-555555555551',
+        donorName: 'Priya Das',
+        requesterId: '11111111-2222-3333-4444-555555555555',
+        requesterName: 'Aarav Sharma',
+        status: 'ACCEPTED',
+        message: 'Need for physics class',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        reservedUntil: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
+      },
+    ];
+
+    render(<App />);
+
+    // Sign in and join campus
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Navigate to My Requests
+    const requestsTab = await screen.findByTestId('tab-requests');
+    fireEvent.click(requestsTab);
+
+    // Request card is rendered with ACCEPTED status and Report a Problem button
+    const requestCard = await screen.findByTestId('request-card');
+    expect(within(requestCard).getByText('ACCEPTED')).toBeInTheDocument();
+    expect(within(requestCard).getByText(/Handover Scheduled/i)).toBeInTheDocument();
+
+    const reportProblemBtn = within(requestCard).getByTestId('report-problem-btn');
+    expect(reportProblemBtn).toBeInTheDocument();
+
+    // Click Report a Problem
+    fireEvent.click(reportProblemBtn);
+
+    // Dispute modal opens
+    const disputeModal = await screen.findByTestId('dispute-modal');
+    expect(disputeModal).toBeInTheDocument();
+
+    // Select reason and add details
+    const reasonInput = screen.getByTestId('dispute-reason-input');
+    fireEvent.change(reasonInput, { target: { value: 'Donor did not show up at pickup zone' } });
+
+    const detailsInput = screen.getByTestId('dispute-details-input');
+    fireEvent.change(detailsInput, {
+      target: { value: 'Waited for 25 minutes at Central Library Entrance, donor did not arrive.' },
+    });
+
+    // Submit dispute
+    const submitDisputeBtn = screen.getByTestId('submit-dispute-btn');
+    fireEvent.click(submitDisputeBtn);
+
+    // Modal closes and status changes to DISPUTED
+    await waitFor(() => {
+      expect(screen.queryByTestId('dispute-modal')).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(within(requestCard).getByText('DISPUTED')).toBeInTheDocument();
     });
   });
 });
