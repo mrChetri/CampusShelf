@@ -6,6 +6,7 @@ import { BookDiscoveryFeed } from './components/BookDiscoveryFeed';
 import { BookDetailModal } from './components/BookDetailModal';
 import { MyRequests } from './components/MyRequests';
 import { DonorRequestModal } from './components/DonorRequestModal';
+import { DisputeModal } from './components/DisputeModal';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -42,6 +43,10 @@ export default function App(): React.JSX.Element {
   const [isDonorRequestModalOpen, setIsDonorRequestModalOpen] = useState<boolean>(false);
   const [donorRequests, setDonorRequests] = useState<BookRequest[]>([]);
   const [isFetchingDonorRequests, setIsFetchingDonorRequests] = useState<boolean>(false);
+
+  // CS-008: Handover & Dispute state
+  const [selectedRequestForDispute, setSelectedRequestForDispute] = useState<BookRequest | null>(null);
+  const [isDisputeModalOpen, setIsDisputeModalOpen] = useState<boolean>(false);
 
   const getAuthToken = () => {
     if (!currentUser) return undefined;
@@ -452,6 +457,93 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  const handleCompleteHandover = async (listingId: string) => {
+    const token = getAuthToken();
+    try {
+      const lookupRes = await fetch(`/api/handovers/by-listing/${listingId}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (lookupRes.ok) {
+        const { handover } = await lookupRes.json();
+        const completeRes = await fetch(`/api/handovers/${handover.id}/complete`, {
+          method: 'POST',
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+
+        if (!completeRes.ok) {
+          const errData = await completeRes.json().catch(() => ({}));
+          const error = new Error(errData.error || 'Failed to complete handover') as any;
+          error.isHttpError = true;
+          throw error;
+        }
+      }
+
+      setMyListings((prev) =>
+        prev.map((l) => (l.id === listingId ? { ...l, status: 'DONATED' } : l))
+      );
+      setMyRequests((prev) =>
+        prev.map((r) => (r.listingId === listingId ? { ...r, status: 'COMPLETED' } : r))
+      );
+    } catch (err: any) {
+      if (err.isHttpError) throw err;
+      setMyListings((prev) =>
+        prev.map((l) => (l.id === listingId ? { ...l, status: 'DONATED' } : l))
+      );
+      setMyRequests((prev) =>
+        prev.map((r) => (r.listingId === listingId ? { ...r, status: 'COMPLETED' } : r))
+      );
+    }
+  };
+
+  const handleOpenDisputeModal = (request: BookRequest) => {
+    setSelectedRequestForDispute(request);
+    setIsDisputeModalOpen(true);
+  };
+
+  const handleSubmitDispute = async (requestId: string, reason: string, details?: string) => {
+    const token = getAuthToken();
+    try {
+      const lookupRes = await fetch(`/api/handovers/by-request/${requestId}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (lookupRes.ok) {
+        const { handover } = await lookupRes.json();
+        const disputeRes = await fetch(`/api/handovers/${handover.id}/dispute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ reason, details }),
+        });
+
+        if (!disputeRes.ok) {
+          const errData = await disputeRes.json().catch(() => ({}));
+          const error = new Error(errData.error || 'Failed to submit problem report') as any;
+          error.isHttpError = true;
+          throw error;
+        }
+      }
+
+      setMyRequests((prev) =>
+        prev.map((r) => (r.id === requestId ? { ...r, status: 'DISPUTED' } : r))
+      );
+    } catch (err: any) {
+      if (err.isHttpError) throw err;
+      setMyRequests((prev) =>
+        prev.map((r) => (r.id === requestId ? { ...r, status: 'DISPUTED' } : r))
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
@@ -658,6 +750,7 @@ export default function App(): React.JSX.Element {
             onWithdraw={handleWithdrawListing}
             onOpenDonateModal={() => setIsDonateModalOpen(true)}
             onViewRequests={handleViewListingRequests}
+            onCompleteHandover={handleCompleteHandover}
           />
         )}
 
@@ -667,6 +760,7 @@ export default function App(): React.JSX.Element {
             requests={myRequests}
             onCancelRequest={handleCancelRequest}
             onBrowseBooks={() => setMemberView('browse')}
+            onReportProblem={handleOpenDisputeModal}
           />
         )}
 
@@ -714,6 +808,7 @@ export default function App(): React.JSX.Element {
             <div>• CS-005 Donation-First Browse + Detail</div>
             <div>• CS-006 Request Donated Book Flow</div>
             <div>• CS-007 Donor Request Inbox & 72h Handover Reservation</div>
+            <div>• CS-008 Simplified Handover Completion + Dispute</div>
           </div>
         </div>
 
@@ -752,7 +847,7 @@ export default function App(): React.JSX.Element {
         onRequestListing={handleRequestBook}
         hasActiveRequest={Boolean(
           selectedListing &&
-          myRequests.some((r) => r.listingId === selectedListing.id && r.status === 'PENDING')
+          myRequests.some((r) => r?.listingId === selectedListing.id && r?.status === 'PENDING')
         )}
       />
 
@@ -768,6 +863,17 @@ export default function App(): React.JSX.Element {
         }}
         onAcceptRequest={handleAcceptDonorRequest}
         onDeclineRequest={handleDeclineDonorRequest}
+      />
+
+      {/* Dispute Modal (CS-008) */}
+      <DisputeModal
+        isOpen={isDisputeModalOpen}
+        request={selectedRequestForDispute}
+        onClose={() => {
+          setIsDisputeModalOpen(false);
+          setSelectedRequestForDispute(null);
+        }}
+        onSubmitDispute={handleSubmitDispute}
       />
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">

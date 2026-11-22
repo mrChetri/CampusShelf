@@ -12,11 +12,13 @@ model User {
   fullName  String
   avatarUrl String?
   role      String    @default("REGISTERED")
-  campusId  String?
-  campus    Campus?   @relation(fields: [campusId], references: [id])
-  listings  Listing[]
-  requests  BookRequest[]
-  createdAt DateTime  @default(now())
+  campusId           String?
+  campus             Campus?       @relation(fields: [campusId], references: [id])
+  listings           Listing[]
+  requests           BookRequest[]
+  donorHandovers     Handover[]    @relation("DonorHandovers")
+  recipientHandovers Handover[]    @relation("RecipientHandovers")
+  createdAt          DateTime      @default(now())
   updatedAt DateTime  @updatedAt
 
   @@map("users")
@@ -73,6 +75,7 @@ model Listing {
   type           String         @default("DONATION")
   photos         ListingPhoto[]
   requests       BookRequest[]
+  handovers      Handover[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -100,8 +103,36 @@ model BookRequest {
   status        String    @default("PENDING") // PENDING, ACCEPTED, DECLINED, CANCELLED, COMPLETED
   reservedUntil DateTime?
   declineReason String?
+  handover      Handover?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@map("book_requests")
+}
+
+model Handover {
+  id             String      @id @default(uuid())
+  listingId      String
+  listing        Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  requestId      String      @unique
+  request        BookRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  donorId        String
+  donor          User        @relation("DonorHandovers", fields: [donorId], references: [id])
+  recipientId    String
+  recipient      User        @relation("RecipientHandovers", fields: [recipientId], references: [id])
+  pickupLocation String
+  scheduleNotes  String?
+  status         String      @default("SCHEDULED") // SCHEDULED, COMPLETED, DISPUTED, EXPIRED
+  reservedUntil  DateTime
+  completedAt    DateTime?
+  disputedAt     DateTime?
+  disputeReason  String?
+  disputeDetails String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([listingId])
+  @@index([donorId])
+  @@index([recipientId])
+  @@map("handovers")
 }

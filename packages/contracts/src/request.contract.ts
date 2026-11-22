@@ -6,6 +6,7 @@ export const RequestStatusEnum = z.enum([
   'DECLINED',
   'CANCELLED',
   'COMPLETED',
+  'DISPUTED',
 ]);
 
 export type RequestStatus = z.infer<typeof RequestStatusEnum>;
