@@ -495,7 +495,8 @@ describe('App Root Shell (Frontend Seam)', () => {
                 pickupLocation: body.pickupLocation || 'Library',
                 photos: body.photos || ['https://example.com/p.jpg'],
                 status: 'AVAILABLE',
-                type: 'DONATION',
+                type: body.type || 'DONATION',
+                price: body.type === 'SALE' ? body.price : undefined,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               },
@@ -1319,5 +1320,70 @@ describe('App Root Shell (Frontend Seam)', () => {
     const auditSection = await screen.findByTestId('audit-logs-section');
     expect(auditSection).toBeInTheDocument();
     expect(within(auditSection).getByText('HIDE_LISTING')).toBeInTheDocument();
+  });
+
+  it('allows Campus Members to create an affordable sale listing with asking price and browse with filter (CS-011)', async () => {
+    render(<App />);
+
+    // Sign in as Registered User
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    // Redeem invite
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Open donate/list book modal
+    const donateBtn = await screen.findByTestId('open-donate-modal-btn');
+    fireEvent.click(donateBtn);
+
+    const modal = await screen.findByTestId('donate-book-modal');
+    expect(modal).toBeInTheDocument();
+
+    // Switch to Affordable Resale mode
+    const saleToggleBtn = screen.getByTestId('listing-type-sale-btn');
+    fireEvent.click(saleToggleBtn);
+
+    // Enter details and asking price
+    const priceInput = await screen.findByTestId('input-price');
+    expect(priceInput).toBeInTheDocument();
+    fireEvent.change(priceInput, { target: { value: '250' } });
+
+    fireEvent.change(screen.getByTestId('input-title'), { target: { value: 'Linear Algebra and Its Applications' } });
+    fireEvent.change(screen.getByTestId('input-author'), { target: { value: 'Gilbert Strang' } });
+    fireEvent.change(screen.getByTestId('input-subject'), { target: { value: 'Mathematics' } });
+
+    const photoInput = screen.getByTestId('input-photo-url');
+    const addPhotoBtn = screen.getByTestId('add-photo-btn');
+    fireEvent.change(photoInput, { target: { value: 'https://example.com/strang.jpg' } });
+    fireEvent.click(addPhotoBtn);
+
+    // Submit form
+    const publishBtn = screen.getByTestId('submit-listing-btn');
+    fireEvent.click(publishBtn);
+
+    // Modal closes
+    await waitFor(() => {
+      expect(screen.queryByTestId('donate-book-modal')).not.toBeInTheDocument();
+    });
+
+    // Switch to Browse tab
+    const browseTab = screen.getByTestId('tab-browse');
+    fireEvent.click(browseTab);
+
+    // Filter control for listing type exists
+    const filterType = await screen.findByTestId('filter-type');
+    expect(filterType).toBeInTheDocument();
+
+    // Set filter to For Sale
+    fireEvent.change(filterType, { target: { value: 'SALE' } });
+
+    // For sale book card rendered with badge and price
+    await waitFor(() => {
+      expect(screen.getByText('Organic Chemistry')).toBeInTheDocument();
+      expect(screen.getByTestId('badge-sale')).toBeInTheDocument();
+    });
   });
 });

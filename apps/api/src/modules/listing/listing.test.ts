@@ -371,4 +371,119 @@ describe('Listing Module Seam (CS-004)', () => {
       expect(res.body.error).toMatch(/not found/i);
     });
   });
+
+  describe('Secondary Sale Listings & Filtering (CS-011)', () => {
+    beforeEach(async () => {
+      listingService.resetForTesting();
+
+      // Create 1 Donation listing
+      await request
+        .post('/api/listings')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          title: 'Free Calculus Textbook',
+          author: 'James Stewart',
+          subject: 'Mathematics',
+          condition: 'GOOD',
+          pickupLocation: 'Library Entrance',
+          photos: ['https://example.com/calc.jpg'],
+          type: 'DONATION',
+        });
+
+      // Create 1 Sale listing
+      await request
+        .post('/api/listings')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          title: 'Affordable Physics Textbook',
+          author: 'Halliday and Resnick',
+          subject: 'Physics',
+          condition: 'LIKE_NEW',
+          pickupLocation: 'Physics Dept Lobby',
+          photos: ['https://example.com/phys.jpg'],
+          type: 'SALE',
+          price: 320,
+        });
+    });
+
+    it('creates a secondary sale listing with validated INR asking price', async () => {
+      const res = await request
+        .post('/api/listings')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          title: 'Microeconomics Principles',
+          author: 'Mankiw',
+          subject: 'Economics',
+          condition: 'GOOD',
+          pickupLocation: 'Canteen Gate',
+          photos: ['https://example.com/econ.jpg'],
+          type: 'SALE',
+          price: 250,
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.listing.type).toBe('SALE');
+      expect(res.body.listing.price).toBe(250);
+    });
+
+    it('rejects a secondary sale listing without an asking price', async () => {
+      const res = await request
+        .post('/api/listings')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          title: 'Incomplete Sale Book',
+          author: 'Unknown',
+          subject: 'General',
+          condition: 'FAIR',
+          pickupLocation: 'Main Foyer',
+          photos: ['https://example.com/book.jpg'],
+          type: 'SALE',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBeDefined();
+    });
+
+    it('rejects a secondary sale listing exceeding ₹5,000 affordability cap', async () => {
+      const res = await request
+        .post('/api/listings')
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({
+          title: 'Expensive Book',
+          author: 'Unknown',
+          subject: 'General',
+          condition: 'NEW',
+          pickupLocation: 'Main Foyer',
+          photos: ['https://example.com/book.jpg'],
+          type: 'SALE',
+          price: 6500,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBeDefined();
+    });
+
+    it('filters feed specifically for SALE listings', async () => {
+      const res = await request.get('/api/listings?type=SALE');
+      expect(res.status).toBe(200);
+      expect(res.body.listings).toHaveLength(1);
+      expect(res.body.listings[0].type).toBe('SALE');
+      expect(res.body.listings[0].price).toBe(320);
+    });
+
+    it('filters feed specifically for DONATION listings', async () => {
+      const res = await request.get('/api/listings?type=DONATION');
+      expect(res.status).toBe(200);
+      expect(res.body.listings).toHaveLength(1);
+      expect(res.body.listings[0].type).toBe('DONATION');
+    });
+
+    it('ranks free donation listings ahead of for-sale listings in the default feed', async () => {
+      const res = await request.get('/api/listings');
+      expect(res.status).toBe(200);
+      expect(res.body.listings).toHaveLength(2);
+      expect(res.body.listings[0].type).toBe('DONATION');
+      expect(res.body.listings[1].type).toBe('SALE');
+    });
+  });
 });

@@ -82,9 +82,12 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
               ) : (
                 <span
                   data-testid="badge-sale"
-                  className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider"
+                  className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"
                 >
-                  🏷️ For Sale
+                  <span>🏷️ For Sale</span>
+                  {listing.price !== null && listing.price !== undefined && (
+                    <span data-testid="detail-price">• ₹{listing.price}</span>
+                  )}
                 </span>
               )}
               <span className="bg-slate-200 text-slate-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
@@ -136,6 +139,32 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Affordable Sale Price Banner (CS-011) */}
+          {listing.type === 'SALE' && listing.price !== null && listing.price !== undefined && (
+            <div
+              data-testid="sale-pricing-banner"
+              className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-950 flex items-center justify-between"
+            >
+              <div>
+                <span className="font-bold text-amber-900 block text-xs">
+                  Student Resale Price
+                </span>
+                <span className="text-[11px] text-amber-800">
+                  Pay directly to seller (Cash or UPI) during campus handover. Zero in-app payment handling.
+                </span>
+              </div>
+              <div className="text-right pl-3">
+                <span
+                  data-testid="detail-asking-price"
+                  className="text-lg font-black text-amber-900 block"
+                >
+                  ₹{listing.price}
+                </span>
+                <span className="text-[10px] text-amber-700 font-medium">INR</span>
+              </div>
             </div>
           )}
 
