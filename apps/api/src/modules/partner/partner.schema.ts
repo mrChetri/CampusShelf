@@ -1,0 +1,16 @@
+export {
+  PartnerVerificationStatusSchema,
+  type PartnerVerificationStatus,
+  PartnerTypeSchema,
+  type PartnerType,
+  CreatePartnerInputSchema,
+  type CreatePartnerInput,
+  UpdatePartnerInputSchema,
+  type UpdatePartnerInput,
+  ReviewPartnerInputSchema,
+  type ReviewPartnerInput,
+  PartnerOrganizationSchema,
+  type PartnerOrganization,
+  PartnerResponseSchema,
+  PartnersListResponseSchema,
+} from '@campusshelf/contracts';

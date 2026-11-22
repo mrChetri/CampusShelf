@@ -9,6 +9,7 @@ import { requestRoutes } from './modules/request/request.routes';
 import { handoverRoutes } from './modules/handover/handover.routes';
 import { notificationRoutes } from './modules/notification/notification.routes';
 import { reportRoutes, adminRoutes } from './modules/moderation/moderation.routes';
+import { publicPartnerRoutes, adminPartnerRoutes } from './modules/partner/partner.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -49,6 +50,12 @@ export function createApp(): Express {
   app.use('/api/reports', reportRoutes);
   app.use('/admin', adminRoutes);
   app.use('/api/admin', adminRoutes);
+
+  // Mount partner directory endpoints (CS-013)
+  app.use('/partners', publicPartnerRoutes);
+  app.use('/api/partners', publicPartnerRoutes);
+  app.use('/admin/partners', adminPartnerRoutes);
+  app.use('/api/admin/partners', adminPartnerRoutes);
 
   return app;
 }

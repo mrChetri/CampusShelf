@@ -38,6 +38,7 @@ model Campus {
   users       User[]
   inviteCodes CampusInviteCode[]
   listings    Listing[]
+  partnerOrganizations PartnerOrganization[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -195,4 +196,26 @@ model AuditEvent {
   @@index([targetType, targetId])
   @@index([createdAt])
   @@map("audit_events")
+}
+
+model PartnerOrganization {
+  id                 String    @id @default(uuid())
+  name               String
+  type               String    // CAMPUS_LIBRARY, COMMUNITY_LIBRARY, STUDENT_UNION, NGO
+  description        String
+  website            String?
+  contactEmail       String
+  contactPhone       String?
+  address            String?
+  campusId           String?
+  campus             Campus?   @relation(fields: [campusId], references: [id])
+  verificationStatus String    @default("PENDING") // PENDING, VERIFIED, REJECTED
+  verifiedAt         DateTime?
+  adminReviewNotes   String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([verificationStatus])
+  @@index([campusId])
+  @@map("partner_organizations")
 }

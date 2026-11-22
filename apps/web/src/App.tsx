@@ -12,6 +12,9 @@ import type {
   AuditEvent,
   ModerationAction,
   ReportReason,
+  PartnerOrganization,
+  CreatePartnerInput,
+  ReviewPartnerInput,
 } from '@campusshelf/contracts';
 import { DonateBookModal } from './components/DonateBookModal';
 import { MyListings } from './components/MyListings';
@@ -25,6 +28,7 @@ import { DonationHistory } from './components/DonationHistory';
 import { CampusImpactPanel } from './components/CampusImpact';
 import { ReportModal } from './components/ReportModal';
 import { ModeratorQueue } from './components/ModeratorQueue';
+import { PartnerDirectory } from './components/PartnerDirectory';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -54,7 +58,9 @@ export default function App(): React.JSX.Element {
 
   // CS-006: Request state & member navigation view
   const [myRequests, setMyRequests] = useState<BookRequest[]>([]);
-  const [memberView, setMemberView] = useState<'browse' | 'listings' | 'requests' | 'history' | 'moderation'>('browse');
+  const [memberView, setMemberView] = useState<'browse' | 'partners' | 'listings' | 'requests' | 'history' | 'moderation'>('browse');
+  const [partners, setPartners] = useState<PartnerOrganization[]>([]);
+  const [allAdminPartners, setAllAdminPartners] = useState<PartnerOrganization[]>([]);
 
   // CS-007: Donor Request Inbox state
   const [selectedListingForRequests, setSelectedListingForRequests] = useState<Listing | null>(null);
@@ -116,6 +122,16 @@ export default function App(): React.JSX.Element {
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
         if (data?.impact) setCampusImpact(data.impact);
+      })
+      .catch(() => {});
+
+    // CS-013: Fetch verified partners for directory
+    fetch('/api/partners')
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (data && Array.isArray(data.partners)) {
+          setPartners(data.partners);
+        }
       })
       .catch(() => {});
   }, []);
@@ -217,6 +233,18 @@ export default function App(): React.JSX.Element {
             }
           })
           .catch(() => {});
+
+        // CS-013: Fetch admin partner list
+        fetch('/api/admin/partners', {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        })
+          .then((res) => (res.ok ? res.json() : Promise.reject()))
+          .then((data) => {
+            if (data && Array.isArray(data.partners)) {
+              setAllAdminPartners(data.partners);
+            }
+          })
+          .catch(() => {});
       }
     } else {
       setMyListings([]);
@@ -227,6 +255,7 @@ export default function App(): React.JSX.Element {
       setHistoryBooksReceived([]);
       setModerationReports([]);
       setModerationAuditLogs([]);
+      setAllAdminPartners([]);
     }
   }, [currentUser]);
 
@@ -798,6 +827,69 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  const handleOnboardPartner = async (input: CreatePartnerInput) => {
+    const token = getAuthToken();
+    const res = await fetch('/api/admin/partners', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to onboard partner organization');
+    }
+
+    const data = await res.json();
+    if (data?.partner) {
+      setAllAdminPartners((prev) => [data.partner, ...prev]);
+      if (data.partner.verificationStatus === 'VERIFIED') {
+        setPartners((prev) => [data.partner, ...prev]);
+      }
+      return data.partner;
+    }
+  };
+
+  const handleReviewPartner = async (id: string, review: ReviewPartnerInput) => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/admin/partners/${id}/review`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(review),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to review partner');
+    }
+
+    const data = await res.json();
+    if (data?.partner) {
+      setAllAdminPartners((prev) =>
+        prev.map((p) => (p.id === id ? data.partner : p))
+      );
+      if (data.partner.verificationStatus === 'VERIFIED') {
+        setPartners((prev) => {
+          const exists = prev.some((p) => p.id === id);
+          if (exists) {
+            return prev.map((p) => (p.id === id ? data.partner : p));
+          } else {
+            return [data.partner, ...prev];
+          }
+        });
+      } else {
+        setPartners((prev) => prev.filter((p) => p.id !== id));
+      }
+      return data.partner;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
@@ -820,6 +912,19 @@ export default function App(): React.JSX.Element {
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>System Status: {healthStatus}</span>
             </div>
+
+            <button
+              onClick={() => setMemberView(memberView === 'partners' ? 'browse' : 'partners')}
+              data-testid="nav-partners-btn"
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors flex items-center space-x-1 ${
+                memberView === 'partners'
+                  ? 'bg-emerald-700 text-white border-emerald-700'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              }`}
+            >
+              <span>🤝</span>
+              <span>{memberView === 'partners' ? 'Browse Books' : 'Partners'}</span>
+            </button>
 
             {currentUser && currentUser.role === 'CAMPUS_MEMBER' && (
               <button
@@ -975,6 +1080,22 @@ export default function App(): React.JSX.Element {
               📖 Browse Books
             </button>
             <button
+              onClick={() => setMemberView('partners')}
+              data-testid="tab-partners"
+              className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
+                memberView === 'partners'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>🤝 Partners</span>
+              {partners.length > 0 && (
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {partners.length}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setMemberView('listings')}
               data-testid="tab-listings"
               className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
@@ -1090,6 +1211,17 @@ export default function App(): React.JSX.Element {
             />
           )}
 
+        {/* CS-013: Verified Partner Directory */}
+        {memberView === 'partners' && (
+          <PartnerDirectory
+            partners={partners}
+            allAdminPartners={allAdminPartners}
+            isAdmin={currentUser?.role === 'MODERATOR' || currentUser?.role === 'ADMIN'}
+            onOnboardPartner={handleOnboardPartner}
+            onReviewPartner={handleReviewPartner}
+          />
+        )}
+
         {/* CS-009: Public Campus Impact Dashboard */}
         <div className="w-full flex justify-center mb-8">
           <CampusImpactPanel impact={campusImpact} />
@@ -1142,11 +1274,14 @@ export default function App(): React.JSX.Element {
             <div>• CS-008 Simplified Handover Completion + Dispute</div>
             <div>• CS-009 In-App Notifications + History</div>
             <div>• CS-010 Reports + Moderator Tools</div>
+            <div>• CS-011 Secondary Sale Listings</div>
+            <div>• CS-012 Buyer Enquiry + Offline Sale Handover</div>
+            <div>• CS-013 Verified Partner Directory</div>
           </div>
         </div>
 
         {/* CS-005: Public Book Discovery Feed */}
-        {(!currentUser || currentUser.role !== 'CAMPUS_MEMBER' || memberView === 'browse') && (
+        {memberView === 'browse' && (
           <BookDiscoveryFeed
             campuses={campuses}
             defaultCampusId={currentUser?.campusId || undefined}

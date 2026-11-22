@@ -470,6 +470,89 @@ describe('App Root Shell (Frontend Seam)', () => {
             json: async () => ({ listings: [] }),
           });
         }
+        if (url.includes('/api/admin/partners') && options?.method === 'POST') {
+          let body: any = {};
+          try {
+            body = options?.body ? JSON.parse(options.body as string) : {};
+          } catch {}
+          return Promise.resolve({
+            ok: true,
+            status: 201,
+            json: async () => ({
+              partner: {
+                id: 'partner-new-123',
+                name: body.name || 'New Partner',
+                type: body.type || 'NGO',
+                description: body.description || '',
+                contactEmail: body.contactEmail || '',
+                website: body.website || null,
+                contactPhone: body.contactPhone || null,
+                address: body.address || null,
+                campusId: body.campusId || null,
+                campusName: 'Darrang College',
+                verificationStatus: 'PENDING',
+                verifiedAt: null,
+                adminReviewNotes: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            }),
+          });
+        }
+        if (url.includes('/api/admin/partners')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              partners: [
+                {
+                  id: 'p-1',
+                  name: 'Darrang College Central Library',
+                  type: 'CAMPUS_LIBRARY',
+                  campusId: '550e8400-e29b-41d4-a716-446655440000',
+                  campusName: 'Darrang College',
+                  description: 'Official academic library.',
+                  website: 'https://darrangcollege.edu.in',
+                  contactEmail: 'library@darrang.edu',
+                  contactPhone: '+91 3712 220014',
+                  address: 'Tezpur, Assam',
+                  verificationStatus: 'VERIFIED',
+                  verifiedAt: new Date().toISOString(),
+                  adminReviewNotes: 'Verified official library.',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+              total: 1,
+            }),
+          });
+        }
+        if (url.includes('/api/partners')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              partners: [
+                {
+                  id: 'p-1',
+                  name: 'Darrang College Central Library',
+                  type: 'CAMPUS_LIBRARY',
+                  campusId: '550e8400-e29b-41d4-a716-446655440000',
+                  campusName: 'Darrang College',
+                  description: 'Official academic library.',
+                  website: 'https://darrangcollege.edu.in',
+                  contactEmail: 'library@darrang.edu',
+                  contactPhone: '+91 3712 220014',
+                  address: 'Tezpur, Assam',
+                  verificationStatus: 'VERIFIED',
+                  verifiedAt: new Date().toISOString(),
+                  adminReviewNotes: 'Verified official library.',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+              total: 1,
+            }),
+          });
+        }
         if (url.includes('/withdraw')) {
           return Promise.resolve({
             ok: true,
@@ -1435,5 +1518,23 @@ describe('App Root Shell (Frontend Seam)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('request-pending-badge')).toHaveTextContent(/Enquiry Sent \(Pending\)/i);
     });
+  });
+
+  it('renders verified partner directory with verified badge and filtering (CS-013)', async () => {
+    render(<App />);
+
+    // Click Partners nav button
+    const partnersNavBtn = await screen.findByTestId('nav-partners-btn');
+    fireEvent.click(partnersNavBtn);
+
+    // Verified Partner Directory view opens
+    expect(await screen.findByTestId('partner-directory-view')).toBeInTheDocument();
+    expect(screen.getByText('Darrang College Central Library')).toBeInTheDocument();
+    expect(screen.getByTestId('verified-partner-badge')).toHaveTextContent('🛡️ Verified Partner');
+
+    // Filter by type
+    const libFilter = screen.getByTestId('filter-type-CAMPUS_LIBRARY');
+    fireEvent.click(libFilter);
+    expect(screen.getByText('Darrang College Central Library')).toBeInTheDocument();
   });
 });
