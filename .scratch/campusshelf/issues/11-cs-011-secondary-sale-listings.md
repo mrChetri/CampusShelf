@@ -4,9 +4,9 @@
 
 **Blocked by:** 04: CS-004 Create Donation Listing, 05: CS-005 Donation-First Browse + Detail
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] Listing schema updated to support `listingType: SALE` with asking price in INR
-- [ ] Listing creation form allows toggling between Free Donation and Affordable Sale with price validation
-- [ ] Browse feed visually distinguishes Sale listings with secondary badge styling and price display
-- [ ] Filter controls allow filtering specifically for Donations, Sales, or All
+- [x] Listing schema updated to support `listingType: SALE` with asking price in INR
+- [x] Listing creation form allows toggling between Free Donation and Affordable Sale with price validation
+- [x] Browse feed visually distinguishes Sale listings with secondary badge styling and price display
+- [x] Filter controls allow filtering specifically for Donations, Sales, or All

@@ -247,4 +247,94 @@ describe('Listing Contracts', () => {
       expect(parsed.listing.donorName).toBe('Asha Sharma');
     });
   });
+
+  describe('CS-011 Secondary Sale Listings Contracts', () => {
+    const baseInput = {
+      title: 'Advanced Engineering Mathematics',
+      author: 'Erwin Kreyszig',
+      subject: 'Mathematics',
+      condition: 'GOOD' as const,
+      pickupLocation: 'Main Building Foyer',
+      photos: ['https://example.com/math.jpg'],
+    };
+
+    it('defaults type to DONATION with optional price when omitted', () => {
+      const parsed = CreateListingInputSchema.parse(baseInput);
+      expect(parsed.type).toBe('DONATION');
+      expect(parsed.price).toBeUndefined();
+    });
+
+    it('validates a SALE listing with a valid asking price in INR', () => {
+      const saleInput = {
+        ...baseInput,
+        type: 'SALE' as const,
+        price: 350,
+      };
+      const parsed = CreateListingInputSchema.parse(saleInput);
+      expect(parsed.type).toBe('SALE');
+      expect(parsed.price).toBe(350);
+    });
+
+    it('rejects a SALE listing with missing or zero price', () => {
+      const missingPrice = {
+        ...baseInput,
+        type: 'SALE' as const,
+      };
+      expect(() => CreateListingInputSchema.parse(missingPrice)).toThrow(
+        /Asking price/i
+      );
+
+      const zeroPrice = {
+        ...baseInput,
+        type: 'SALE' as const,
+        price: 0,
+      };
+      expect(() => CreateListingInputSchema.parse(zeroPrice)).toThrow(
+        /Asking price/i
+      );
+    });
+
+    it('rejects a SALE listing with negative price', () => {
+      const negativePrice = {
+        ...baseInput,
+        type: 'SALE' as const,
+        price: -50,
+      };
+      expect(() => CreateListingInputSchema.parse(negativePrice)).toThrow();
+    });
+
+    it('rejects a SALE listing exceeding the ₹5,000 student affordability limit', () => {
+      const exorbitantPrice = {
+        ...baseInput,
+        type: 'SALE' as const,
+        price: 7500,
+      };
+      expect(() => CreateListingInputSchema.parse(exorbitantPrice)).toThrow(
+        /5,000/i
+      );
+    });
+
+    it('validates a complete Listing entity with type SALE and price in INR', () => {
+      const saleEntity = {
+        id: validUUID,
+        donorId: validUUID,
+        donorName: 'Rahul Verma',
+        campusId: validCampusUUID,
+        title: 'Organic Chemistry',
+        author: 'Paula Bruice',
+        subject: 'Chemistry',
+        condition: 'LIKE_NEW' as const,
+        pickupLocation: 'Science Block Lobby',
+        photos: ['https://example.com/chem.jpg'],
+        status: 'AVAILABLE' as const,
+        type: 'SALE' as const,
+        price: 450,
+        createdAt: '2026-11-20T10:00:00.000Z',
+        updatedAt: '2026-11-20T10:00:00.000Z',
+      };
+      const parsed = ListingSchema.parse(saleEntity);
+      expect(parsed.type).toBe('SALE');
+      expect(parsed.price).toBe(450);
+    });
+  });
 });

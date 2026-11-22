@@ -76,7 +76,7 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
         </div>
 
         {/* Search Bar & Filter Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search Input */}
           <div className="sm:col-span-2">
             <div className="relative">
@@ -125,6 +125,20 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
               <option value="GOOD">Good</option>
               <option value="FAIR">Fair</option>
               <option value="POOR">Poor</option>
+            </select>
+          </div>
+
+          {/* Listing Type Filter (CS-011) */}
+          <div>
+            <select
+              data-testid="filter-type"
+              value={type}
+              onChange={(e) => setType(e.target.value as ListingType | '')}
+              className="w-full py-2 px-3 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium text-slate-700"
+            >
+              <option value="">All Types (Donations First)</option>
+              <option value="DONATION">🎁 Free Donations Only</option>
+              <option value="SALE">🏷️ For Sale Only</option>
             </select>
           </div>
         </div>
@@ -213,9 +227,12 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
                   ) : (
                     <span
                       data-testid="badge-sale"
-                      className="bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow"
+                      className="bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1"
                     >
-                      FOR SALE
+                      <span>FOR SALE</span>
+                      {listing.price !== null && listing.price !== undefined && (
+                        <span data-testid="listing-price">• ₹{listing.price}</span>
+                      )}
                     </span>
                   )}
                   <span className="bg-slate-900/70 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
@@ -245,8 +262,14 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-                  <span className="truncate max-w-[160px]">📍 {listing.pickupLocation}</span>
-                  <span className="font-medium text-emerald-700">View Details →</span>
+                  <span className="truncate max-w-[150px]">📍 {listing.pickupLocation}</span>
+                  {listing.type === 'SALE' && listing.price !== null && listing.price !== undefined ? (
+                    <span data-testid="card-price" className="font-extrabold text-amber-700 text-xs">
+                      ₹{listing.price}
+                    </span>
+                  ) : (
+                    <span className="font-medium text-emerald-700">View Details →</span>
+                  )}
                 </div>
               </div>
             </div>

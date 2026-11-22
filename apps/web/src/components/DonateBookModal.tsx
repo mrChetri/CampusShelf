@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Listing, ListingCondition } from '@campusshelf/contracts';
+import type { Listing, ListingCondition, ListingType } from '@campusshelf/contracts';
 
 interface DonateBookModalProps {
   isOpen: boolean;
@@ -41,6 +41,8 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
   const [subject, setSubject] = useState('');
   const [semester, setSemester] = useState('');
   const [condition, setCondition] = useState<ListingCondition>('GOOD');
+  const [listingType, setListingType] = useState<ListingType>('DONATION');
+  const [price, setPrice] = useState<string>('');
   const [selectedZone, setSelectedZone] = useState(SAFE_PICKUP_ZONES[0]);
   const [pickupLocation, setPickupLocation] = useState(SAFE_PICKUP_ZONES[0]);
   const [description, setDescription] = useState('');
@@ -121,6 +123,16 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
       return;
     }
 
+    let parsedPrice: number | undefined = undefined;
+    if (listingType === 'SALE') {
+      const num = parseInt(price, 10);
+      if (isNaN(num) || num < 1 || num > 5000) {
+        setFormError('Asking price must be between ₹1 and ₹5,000 for student affordability.');
+        return;
+      }
+      parsedPrice = num;
+    }
+
     setIsSubmitting(true);
 
     const payload = {
@@ -135,6 +147,8 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
       pickupLocation: resolvedPickupLocation,
       photos,
       description: description.trim() || undefined,
+      type: listingType,
+      price: parsedPrice,
     };
 
     try {
@@ -172,7 +186,8 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
           photos: payload.photos,
           description: payload.description ?? null,
           status: 'AVAILABLE',
-          type: 'DONATION',
+          type: payload.type,
+          price: payload.price ?? null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -202,7 +217,8 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
         photos: payload.photos,
         description: payload.description ?? null,
         status: 'AVAILABLE',
-        type: 'DONATION',
+        type: payload.type,
+        price: payload.price ?? null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -221,8 +237,10 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 text-left relative max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
           <div className="flex items-center space-x-2">
-            <span className="text-xl">📖</span>
-            <h3 className="font-bold text-lg text-slate-800">Donate a Book</h3>
+            <span className="text-xl">{listingType === 'SALE' ? '🏷️' : '📖'}</span>
+            <h3 className="font-bold text-lg text-slate-800">
+              {listingType === 'SALE' ? 'List Book for Sale' : 'Donate a Book'}
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -250,6 +268,72 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Listing Type Toggle */}
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Listing Mode *</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                data-testid="listing-type-donation-btn"
+                onClick={() => {
+                  setListingType('DONATION');
+                  setPrice('');
+                }}
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all ${
+                  listingType === 'DONATION'
+                    ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-400/40 shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span>🎁</span>
+                <span>Free Donation (Default)</span>
+              </button>
+              <button
+                type="button"
+                data-testid="listing-type-sale-btn"
+                onClick={() => setListingType('SALE')}
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all ${
+                  listingType === 'SALE'
+                    ? 'bg-amber-50 border-amber-500 text-amber-800 ring-2 ring-amber-400/40 shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span>🏷️</span>
+                <span>Affordable Resale</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Asking Price Input for SALE */}
+          {listingType === 'SALE' && (
+            <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-2">
+              <div>
+                <label className="block font-semibold text-amber-950 mb-1">
+                  Asking Price in INR (₹) *
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none font-bold text-amber-700 text-sm">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5000"
+                    step="1"
+                    data-testid="input-price"
+                    placeholder="e.g. 250"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                💡 Affordable student resale (₹1 – ₹5,000). Direct peer payment (Cash or UPI) upon physical campus handover. Zero platform fees or commissions.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Book Title *</label>
             <input
@@ -483,7 +567,13 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
               disabled={isSubmitting}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2 rounded-lg shadow disabled:opacity-50"
             >
-              {isSubmitting ? 'Publishing Donation...' : 'Publish Donation'}
+              {isSubmitting
+                ? listingType === 'SALE'
+                  ? 'Publishing Sale...'
+                  : 'Publishing Donation...'
+                : listingType === 'SALE'
+                ? 'Publish Sale Listing'
+                : 'Publish Donation'}
             </button>
           </div>
         </form>

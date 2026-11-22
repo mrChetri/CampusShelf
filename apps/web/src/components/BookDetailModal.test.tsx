@@ -125,4 +125,28 @@ describe('BookDetailModal Component', () => {
 
     expect(handleRequest).toHaveBeenCalledWith(sampleListing.id, 'Hi! Need this for Mechanical Engineering exams.');
   });
+
+  it('renders sale listings with For Sale badge, pricing banner, and asking price in INR (CS-011)', () => {
+    const saleListing: PublicListing = {
+      ...sampleListing,
+      id: 'detail-sale-1',
+      title: 'Economics for College Students',
+      type: 'SALE',
+      price: 320,
+    };
+
+    render(
+      <BookDetailModal
+        isOpen={true}
+        listing={saleListing}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('badge-sale')).toBeInTheDocument();
+    expect(screen.getByTestId('detail-price')).toHaveTextContent(/₹320/);
+    expect(screen.getByTestId('sale-pricing-banner')).toBeInTheDocument();
+    expect(screen.getByTestId('detail-asking-price')).toHaveTextContent('₹320');
+    expect(screen.getByText(/Pay directly to seller \(Cash or UPI\) during campus handover/i)).toBeInTheDocument();
+  });
 });

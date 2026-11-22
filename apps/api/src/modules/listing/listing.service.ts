@@ -43,7 +43,8 @@ export class ListingService {
       photos: input.photos,
       description: input.description ?? null,
       status: 'AVAILABLE',
-      type: 'DONATION',
+      type: input.type ?? 'DONATION',
+      price: input.type === 'SALE' ? (input.price ?? null) : null,
       createdAt: now,
       updatedAt: now,
     };

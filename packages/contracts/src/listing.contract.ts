@@ -24,24 +24,45 @@ export const ListingTypeEnum = z.enum(['DONATION', 'SALE']);
 
 export type ListingType = z.infer<typeof ListingTypeEnum>;
 
-export const CreateListingInputSchema = z.object({
-  title: z.string().trim().min(2).max(200),
-  author: z.string().trim().min(2).max(150),
-  isbn: z.string().trim().max(32).optional(),
-  edition: z.string().trim().max(64).optional(),
-  course: z.string().trim().max(100).optional(),
-  subject: z.string().trim().min(2).max(100),
-  semester: z.string().trim().max(50).optional(),
-  condition: ListingConditionEnum,
-  pickupLocation: z.string().trim().min(3).max(200),
-  photos: z
-    .array(z.string().url())
-    .min(1, 'At least 1 photo is required')
-    .max(5, 'Maximum of 5 photos allowed per listing (ADR-0002)'),
-  description: z.string().trim().max(1000).optional(),
-});
+export const CreateListingInputSchema = z
+  .object({
+    title: z.string().trim().min(2).max(200),
+    author: z.string().trim().min(2).max(150),
+    isbn: z.string().trim().max(32).optional(),
+    edition: z.string().trim().max(64).optional(),
+    course: z.string().trim().max(100).optional(),
+    subject: z.string().trim().min(2).max(100),
+    semester: z.string().trim().max(50).optional(),
+    condition: ListingConditionEnum,
+    pickupLocation: z.string().trim().min(3).max(200),
+    photos: z
+      .array(z.string().url())
+      .min(1, 'At least 1 photo is required')
+      .max(5, 'Maximum of 5 photos allowed per listing (ADR-0002)'),
+    description: z.string().trim().max(1000).optional(),
+    type: ListingTypeEnum.default('DONATION'),
+    price: z
+      .number()
+      .int('Price must be an integer')
+      .min(1, 'Asking price must be at least ₹1')
+      .max(5000, 'Asking price must not exceed ₹5,000 for student affordability')
+      .optional()
+      .nullable(),
+  })
+  .refine(
+    (data) => {
+      if (data.type === 'SALE') {
+        return typeof data.price === 'number' && data.price >= 1;
+      }
+      return true;
+    },
+    {
+      message: 'Asking price in INR (minimum ₹1) is required for sale listings',
+      path: ['price'],
+    }
+  );
 
-export type CreateListingInput = z.infer<typeof CreateListingInputSchema>;
+export type CreateListingInput = z.input<typeof CreateListingInputSchema>;
 
 export const ListingSchema = z.object({
   id: z.string().uuid(),
@@ -63,6 +84,7 @@ export const ListingSchema = z.object({
   status: ListingStatusEnum.default('AVAILABLE'),
   reservedUntil: z.string().datetime().nullable().optional(),
   type: ListingTypeEnum.default('DONATION'),
+  price: z.number().int().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
