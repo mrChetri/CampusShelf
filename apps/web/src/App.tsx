@@ -18,6 +18,7 @@ import type {
   CampaignNeed,
   CreateCampaignNeedInput,
   UpdateCampaignNeedInput,
+  BookDriveSummary,
 } from '@campusshelf/contracts';
 import { DonateBookModal } from './components/DonateBookModal';
 import { MyListings } from './components/MyListings';
@@ -33,6 +34,7 @@ import { ReportModal } from './components/ReportModal';
 import { ModeratorQueue } from './components/ModeratorQueue';
 import { PartnerDirectory } from './components/PartnerDirectory';
 import { CampaignNeedsView } from './components/CampaignNeedsView';
+import { BookDriveView } from './components/BookDriveView';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -62,13 +64,17 @@ export default function App(): React.JSX.Element {
 
   // CS-006: Request state & member navigation view
   const [myRequests, setMyRequests] = useState<BookRequest[]>([]);
-  const [memberView, setMemberView] = useState<'browse' | 'campaigns' | 'partners' | 'listings' | 'requests' | 'history' | 'moderation'>('browse');
+  const [memberView, setMemberView] = useState<'browse' | 'campaigns' | 'drive' | 'partners' | 'listings' | 'requests' | 'history' | 'moderation'>('browse');
   const [partners, setPartners] = useState<PartnerOrganization[]>([]);
   const [allAdminPartners, setAllAdminPartners] = useState<PartnerOrganization[]>([]);
 
   // CS-014: Campaign book needs state
   const [campaignNeeds, setCampaignNeeds] = useState<CampaignNeed[]>([]);
   const [selectedCampaignForDonation, setSelectedCampaignForDonation] = useState<CampaignNeed | null>(null);
+
+  // CS-015: Semester book drive state
+  const [bookDrive, setBookDrive] = useState<BookDriveSummary | null>(null);
+  const [isLoadingDrive, setIsLoadingDrive] = useState<boolean>(false);
 
   // CS-007: Donor Request Inbox state
   const [selectedListingForRequests, setSelectedListingForRequests] = useState<Listing | null>(null);
@@ -149,6 +155,16 @@ export default function App(): React.JSX.Element {
       .then((data) => {
         if (data && Array.isArray(data.needs)) {
           setCampaignNeeds(data.needs);
+        }
+      })
+      .catch(() => {});
+
+    // CS-015: Fetch public campus semester book drive
+    fetch('/api/drives/darrang-college')
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (data?.drive) {
+          setBookDrive(data.drive);
         }
       })
       .catch(() => {});
@@ -986,6 +1002,19 @@ export default function App(): React.JSX.Element {
             </div>
 
             <button
+              onClick={() => setMemberView(memberView === 'drive' ? 'browse' : 'drive')}
+              data-testid="nav-drive-btn"
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors flex items-center space-x-1 ${
+                memberView === 'drive'
+                  ? 'bg-emerald-700 text-white border-emerald-700'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              }`}
+            >
+              <span>📢</span>
+              <span>{memberView === 'drive' ? 'Browse Books' : 'Book Drive'}</span>
+            </button>
+
+            <button
               onClick={() => setMemberView(memberView === 'partners' ? 'browse' : 'partners')}
               data-testid="nav-partners-btn"
               className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors flex items-center space-x-1 ${
@@ -1150,6 +1179,17 @@ export default function App(): React.JSX.Element {
               }`}
             >
               📖 Browse Books
+            </button>
+            <button
+              onClick={() => setMemberView('drive')}
+              data-testid="tab-book-drive"
+              className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
+                memberView === 'drive'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>📢 Book Drive</span>
             </button>
             <button
               onClick={() => setMemberView('campaigns')}
@@ -1322,6 +1362,16 @@ export default function App(): React.JSX.Element {
           />
         )}
 
+        {/* CS-015: Semester Book Drive + Share Links */}
+        {memberView === 'drive' && (
+          <BookDriveView
+            drive={bookDrive}
+            isLoading={isLoadingDrive}
+            onBrowseBooks={() => setMemberView('browse')}
+            onDonateBook={() => setIsDonateModalOpen(true)}
+          />
+        )}
+
         {/* CS-009: Public Campus Impact Dashboard */}
         <div className="w-full flex justify-center mb-8">
           <CampusImpactPanel impact={campusImpact} />
@@ -1378,6 +1428,7 @@ export default function App(): React.JSX.Element {
             <div>• CS-012 Buyer Enquiry + Offline Sale Handover</div>
             <div>• CS-013 Verified Partner Directory</div>
             <div>• CS-014 NGO Book Needs / Campaign</div>
+            <div>• CS-015 Semester Book Drive + Share Links</div>
           </div>
         </div>
 

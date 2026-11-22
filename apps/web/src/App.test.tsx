@@ -605,6 +605,29 @@ describe('App Root Shell (Frontend Seam)', () => {
             }),
           });
         }
+        if (url.includes('/api/drives/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              drive: {
+                campusId: '550e8400-e29b-41d4-a716-446655440000',
+                campusName: 'Darrang College',
+                campusSlug: 'darrang-college',
+                driveTitle: 'Darrang College Semester Book Drive',
+                academicYear: '2025-2026',
+                totalBooksDonated: 48,
+                totalBooksListed: 64,
+                activeContributorsCount: 39,
+                topCategories: [
+                  { category: 'Physics', count: 18 },
+                  { category: 'Chemistry', count: 14 },
+                ],
+                shareUrl: 'https://campusshelf.org/drives/darrang-college',
+                shareText: 'Join the Darrang College Semester Book Drive on CampusShelf!',
+              },
+            }),
+          });
+        }
         if (url.includes('/withdraw')) {
           return Promise.resolve({
             ok: true,
@@ -1625,5 +1648,22 @@ describe('App Root Shell (Frontend Seam)', () => {
     expect(screen.getByText(/Donating to Campaign:/i)).toBeInTheDocument();
     expect(screen.getByText(/B.Sc Semester 1 Physics Textbook Drive/i)).toBeInTheDocument();
     expect(screen.getByTestId('input-course')).toHaveValue('B.Sc Physics');
+  });
+
+  it('navigates to Semester Book Drive page, renders aggregate impact, and generates share links (CS-015)', async () => {
+    render(<App />);
+
+    // Click Book Drive nav button in header
+    const driveNavBtn = await screen.findByTestId('nav-drive-btn');
+    fireEvent.click(driveNavBtn);
+
+    // Verify Book Drive page is rendered
+    expect(await screen.findByTestId('book-drive-view')).toBeInTheDocument();
+    expect(screen.getByTestId('drive-title')).toHaveTextContent('Darrang College Semester Book Drive');
+    expect(screen.getByTestId('metric-books-donated')).toHaveTextContent('48');
+    expect(screen.getByTestId('metric-contributors')).toHaveTextContent('39');
+    expect(screen.getByTestId('drive-share-card')).toBeInTheDocument();
+    expect(screen.getByTestId('qr-code-svg')).toBeInTheDocument();
+    expect(screen.getByTestId('drive-privacy-guardrail')).toBeInTheDocument();
   });
 });
