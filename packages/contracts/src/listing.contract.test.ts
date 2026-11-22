@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CreateListingInputSchema,
   ListingSchema,
+  ListingStatusEnum,
   MyListingsResponseSchema,
   WithdrawListingResponseSchema,
   ListingsQuerySchema,
@@ -335,6 +336,29 @@ describe('Listing Contracts', () => {
       const parsed = ListingSchema.parse(saleEntity);
       expect(parsed.type).toBe('SALE');
       expect(parsed.price).toBe(450);
+    });
+
+    it('accepts SOLD as a valid listing status (CS-012)', () => {
+      expect(ListingStatusEnum.parse('SOLD')).toBe('SOLD');
+      const soldEntity = {
+        id: validUUID,
+        donorId: validUUID,
+        donorName: 'Rahul Verma',
+        campusId: validCampusUUID,
+        title: 'Organic Chemistry',
+        author: 'Paula Bruice',
+        subject: 'Chemistry',
+        condition: 'LIKE_NEW' as const,
+        pickupLocation: 'Science Block Lobby',
+        photos: ['https://example.com/chem.jpg'],
+        status: 'SOLD' as const,
+        type: 'SALE' as const,
+        price: 450,
+        createdAt: '2026-11-20T10:00:00.000Z',
+        updatedAt: '2026-11-20T10:00:00.000Z',
+      };
+      const parsed = ListingSchema.parse(soldEntity);
+      expect(parsed.status).toBe('SOLD');
     });
   });
 });

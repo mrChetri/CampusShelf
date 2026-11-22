@@ -69,4 +69,33 @@ describe('MyRequests Component', () => {
     fireEvent.click(cancelButtons[0]);
     expect(handleCancel).toHaveBeenCalledWith('req-1');
   });
+
+  it('renders sale requests with asking price badge and cash/UPI handover instructions when accepted (CS-012)', () => {
+    const saleRequests: BookRequest[] = [
+      {
+        id: 'sale-req-1',
+        listingId: 'list-sale-1',
+        listingTitle: 'Principles of Communication Systems',
+        listingAuthor: 'Taub and Schilling',
+        listingPhoto: null,
+        pickupLocation: 'Department of Electrical Engineering',
+        campusName: 'Darrang College',
+        donorId: 'donor-1',
+        donorName: 'Rahul Kalita',
+        requesterId: 'student-1',
+        requesterName: 'Aarav Sharma',
+        status: 'ACCEPTED',
+        listingType: 'SALE',
+        listingPrice: 400,
+        message: 'Looking forward to meeting.',
+        createdAt: '2026-11-20T10:00:00.000Z',
+        updatedAt: '2026-11-20T10:00:00.000Z',
+      },
+    ];
+
+    render(<MyRequests requests={saleRequests} onCancelRequest={vi.fn()} />);
+
+    expect(screen.getByTestId('request-price-badge')).toHaveTextContent(/₹400/);
+    expect(screen.getByText(/Pay ₹400 directly in Cash or UPI/i)).toBeInTheDocument();
+  });
 });

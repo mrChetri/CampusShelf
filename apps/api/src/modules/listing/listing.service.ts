@@ -192,7 +192,7 @@ export class ListingService {
 
     const updated: Listing = {
       ...listing,
-      status: 'DONATED',
+      status: listing.type === 'SALE' ? 'SOLD' : 'DONATED',
       updatedAt: new Date().toISOString(),
     };
 

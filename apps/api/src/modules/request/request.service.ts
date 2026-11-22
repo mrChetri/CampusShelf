@@ -60,6 +60,7 @@ export class RequestService {
     const campusName = campus?.name || listing.campusName || 'Campus';
 
     const now = new Date().toISOString();
+    const isSale = listing.type === 'SALE';
     const newRequest: BookRequest = {
       id: randomUUID(),
       listingId: listing.id,
@@ -73,6 +74,8 @@ export class RequestService {
       requesterId: requester.id,
       requesterName: requester.fullName,
       status: 'PENDING',
+      listingType: listing.type ?? 'DONATION',
+      listingPrice: isSale ? (listing.price ?? null) : null,
       message: input.message ? input.message.trim() : null,
       createdAt: now,
       updatedAt: now,
@@ -80,12 +83,14 @@ export class RequestService {
 
     this.requests.unshift(newRequest);
 
-    // Notify donor: a new request was received for their listing
+    // Notify donor/seller: a new request/enquiry was received for their listing
     notificationService.createNotification({
       userId: listing.donorId,
       type: 'REQUEST_RECEIVED',
-      title: 'New request for your book',
-      body: `${requester.fullName} has requested "${listing.title}".`,
+      title: isSale ? 'New purchase enquiry for your book' : 'New request for your book',
+      body: isSale
+        ? `${requester.fullName} has sent a purchase enquiry for "${listing.title}" (Asking: ₹${listing.price}). Reminder: Cash/UPI settled directly on campus.`
+        : `${requester.fullName} has requested "${listing.title}".`,
       entityId: newRequest.id,
     });
 
@@ -211,6 +216,7 @@ export class RequestService {
     }
 
     // Initialize scheduled handover record (ADR-0001)
+    const isSale = listing.type === 'SALE';
     const handover = handoverService.createHandover({
       listingId: listing.id,
       listingTitle: listing.title,
@@ -223,14 +229,18 @@ export class RequestService {
       pickupLocation: listing.pickupLocation,
       scheduleNotes: request.message,
       reservedUntil,
+      listingType: listing.type ?? 'DONATION',
+      price: isSale ? (listing.price ?? null) : null,
     });
 
-    // Notify accepted requester
+    // Notify accepted requester / buyer
     notificationService.createNotification({
       userId: request.requesterId,
       type: 'REQUEST_ACCEPTED',
-      title: 'Your request was accepted! 🎉',
-      body: `Your request for "${listing.title}" was accepted. Coordinate pickup at ${listing.pickupLocation} within 72 hours.`,
+      title: isSale ? 'Purchase enquiry accepted! 🤝' : 'Your request was accepted! 🎉',
+      body: isSale
+        ? `Your purchase enquiry for "${listing.title}" was accepted! Meet on campus within 72 hours. Payment of ₹${listing.price} is settled directly via Cash or UPI upon handover.`
+        : `Your request for "${listing.title}" was accepted. Coordinate pickup at ${listing.pickupLocation} within 72 hours.`,
       entityId: request.id,
     });
 

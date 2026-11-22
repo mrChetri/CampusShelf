@@ -66,6 +66,15 @@ describe('Handover Contracts (CS-008)', () => {
       const parsedCompleted = HandoverSchema.parse(completed);
       expect(parsedCompleted.completedAt).toBe('2026-11-22T15:30:00.000Z');
 
+      const saleHandover = {
+        ...validHandover,
+        listingType: 'SALE' as const,
+        price: 350,
+      };
+      const parsedSaleHandover = HandoverSchema.parse(saleHandover);
+      expect(parsedSaleHandover.listingType).toBe('SALE');
+      expect(parsedSaleHandover.price).toBe(350);
+
       const disputed = {
         ...validHandover,
         status: 'DISPUTED',

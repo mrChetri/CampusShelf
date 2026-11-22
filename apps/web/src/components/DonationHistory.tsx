@@ -11,11 +11,11 @@ export function DonationHistory({ booksGiven, booksReceived }: DonationHistoryPr
     <div data-testid="donation-history-section" className="w-full max-w-2xl space-y-6">
       <h2 className="text-lg font-semibold text-slate-800 text-left">My Donation History</h2>
 
-      {/* Books Given */}
+      {/* Books Given / Sold */}
       <div>
-        <h3 className="text-sm font-semibold text-emerald-700 mb-3">📦 Books I've Donated ({booksGiven.length})</h3>
+        <h3 className="text-sm font-semibold text-emerald-700 mb-3">📦 Books Passed Forward ({booksGiven.length})</h3>
         {booksGiven.length === 0 ? (
-          <p className="text-xs text-slate-500 italic">No completed donations yet.</p>
+          <p className="text-xs text-slate-500 italic">No completed donations or sales yet.</p>
         ) : (
           <div className="space-y-2">
             {booksGiven.map((book) => (
@@ -26,9 +26,18 @@ export function DonationHistory({ booksGiven, booksReceived }: DonationHistoryPr
               >
                 <p className="text-sm font-medium text-slate-800">{book.title}</p>
                 <p className="text-xs text-slate-500">by {book.author}</p>
-                <span className="inline-block mt-1 text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded">
-                  DONATED ✓
-                </span>
+                {book.status === 'SOLD' || book.type === 'SALE' ? (
+                  <span
+                    data-testid="sold-book-badge"
+                    className="inline-block mt-1 text-[10px] bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded"
+                  >
+                    SOLD {book.price ? `(₹${book.price}) ` : ''}✓
+                  </span>
+                ) : (
+                  <span className="inline-block mt-1 text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded">
+                    DONATED ✓
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -50,9 +59,18 @@ export function DonationHistory({ booksGiven, booksReceived }: DonationHistoryPr
               >
                 <p className="text-sm font-medium text-slate-800">{req.listingTitle}</p>
                 <p className="text-xs text-slate-500">by {req.listingAuthor}</p>
-                <span className="inline-block mt-1 text-[10px] bg-sky-100 text-sky-700 font-semibold px-2 py-0.5 rounded">
-                  RECEIVED ✓
-                </span>
+                {req.listingType === 'SALE' ? (
+                  <span
+                    data-testid="purchased-book-badge"
+                    className="inline-block mt-1 text-[10px] bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded"
+                  >
+                    PURCHASED {req.listingPrice ? `(₹${req.listingPrice}) ` : ''}✓
+                  </span>
+                ) : (
+                  <span className="inline-block mt-1 text-[10px] bg-sky-100 text-sky-700 font-semibold px-2 py-0.5 rounded">
+                    RECEIVED ✓
+                  </span>
+                )}
               </div>
             ))}
           </div>

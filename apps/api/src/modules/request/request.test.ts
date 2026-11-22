@@ -475,4 +475,70 @@ describe('Book Request Module Seam (CS-006)', () => {
       expect(res.body.error).toMatch(/validation failed/i);
     });
   });
+
+  describe('CS-012 Buyer Purchase Enquiry on Sale Listings', () => {
+    let saleListingId: string;
+
+    beforeEach(() => {
+      const donorProfile = userService.getProfileById(donorId)!;
+      const saleListing = listingService.createListing(donorProfile, {
+        title: 'Concepts of Physics Vol 1',
+        author: 'H.C. Verma',
+        subject: 'Physics',
+        condition: 'GOOD',
+        pickupLocation: 'Main Campus Canteen',
+        photos: ['https://example.com/hcverma.jpg'],
+        type: 'SALE',
+        price: 320,
+      });
+      saleListingId = saleListing.id;
+    });
+
+    it('allows a Campus Member to send a purchase enquiry with price and listing type preserved', async () => {
+      const res = await request
+        .post(`/api/listings/${saleListingId}/requests`)
+        .set('Authorization', `Bearer ${requesterToken}`)
+        .send({ message: 'I will buy this. Can pay ₹320 via UPI when we meet.' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.request.listingType).toBe('SALE');
+      expect(res.body.request.listingPrice).toBe(320);
+      expect(res.body.request.status).toBe('PENDING');
+
+      // Verify seller received purchase enquiry notification
+      const notifsRes = await request
+        .get('/api/notifications')
+        .set('Authorization', `Bearer ${donorToken}`);
+      const enquiryNotif = notifsRes.body.notifications.find(
+        (n: any) => n.title.includes('purchase enquiry') || n.body.includes('₹320')
+      );
+      expect(enquiryNotif).toBeDefined();
+      expect(enquiryNotif.body).toMatch(/cash|upi|campus/i);
+    });
+
+    it('notifies buyer with direct cash/UPI payment reminder when seller accepts enquiry', async () => {
+      const reqRes = await request
+        .post(`/api/listings/${saleListingId}/requests`)
+        .set('Authorization', `Bearer ${requesterToken}`)
+        .send({ message: 'Available tomorrow at 2 PM.' });
+      const reqId = reqRes.body.request.id;
+
+      const acceptRes = await request
+        .post(`/api/requests/${reqId}/accept`)
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      expect(acceptRes.status).toBe(200);
+      expect(acceptRes.body.listing.status).toBe('RESERVED');
+
+      // Verify buyer received acceptance notification with cash/UPI reminder
+      const notifsRes = await request
+        .get('/api/notifications')
+        .set('Authorization', `Bearer ${requesterToken}`);
+      const acceptNotif = notifsRes.body.notifications.find(
+        (n: any) => n.title.includes('Purchase enquiry accepted') || n.body.includes('₹320')
+      );
+      expect(acceptNotif).toBeDefined();
+      expect(acceptNotif.body).toMatch(/cash|upi/i);
+    });
+  });
 });

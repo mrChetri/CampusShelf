@@ -110,6 +110,15 @@ describe('Book Request Contracts (Seam 1)', () => {
       const parsedReserved = BookRequestSchema.parse(reserved);
       expect(parsedReserved.reservedUntil).toBe('2026-11-23T10:00:00.000Z');
 
+      const saleEnquiry = {
+        ...validRequest,
+        listingType: 'SALE' as const,
+        listingPrice: 350,
+      };
+      const parsedSaleEnquiry = BookRequestSchema.parse(saleEnquiry);
+      expect(parsedSaleEnquiry.listingType).toBe('SALE');
+      expect(parsedSaleEnquiry.listingPrice).toBe(350);
+
       const declined = {
         ...validRequest,
         status: 'DECLINED' as const,
