@@ -128,4 +128,57 @@ describe('DonateBookModal Component (CS-004 & CS-011)', () => {
       expect(handleClose).toHaveBeenCalledOnce();
     });
   });
+
+  it('displays campaign donation banner and attaches campaignNeedId on submit (CS-014)', async () => {
+    const handleSuccess = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <DonateBookModal
+        isOpen={true}
+        onClose={handleClose}
+        onSuccess={handleSuccess}
+        initialCampaignNeedId="need-123"
+        initialCampaignTitle="First-Year Physics Drive"
+        initialPartnerName="Tezpur Book Bank"
+        initialSubject="Physics"
+        initialCourse="B.Sc"
+      />
+    );
+
+    expect(screen.getByTestId('campaign-donation-banner')).toBeInTheDocument();
+    expect(screen.getByText(/Donating to Campaign:/i)).toBeInTheDocument();
+    expect(screen.getByText(/First-Year Physics Drive/i)).toBeInTheDocument();
+    expect(screen.getByText(/\(Tezpur Book Bank\)/i)).toBeInTheDocument();
+
+    // Verify initial values pre-populated
+    expect(screen.getByTestId('input-subject')).toHaveValue('Physics');
+    expect(screen.getByTestId('input-course')).toHaveValue('B.Sc');
+
+    // Fill remaining required fields
+    fireEvent.change(screen.getByTestId('input-title'), { target: { value: 'Halliday and Resnick Physics' } });
+    fireEvent.change(screen.getByTestId('input-author'), { target: { value: 'Walker' } });
+
+    // Add photo
+    const photoInput = screen.getByTestId('input-photo-url');
+    const addPhotoBtn = screen.getByTestId('add-photo-btn');
+    fireEvent.change(photoInput, { target: { value: 'https://example.com/phys.jpg' } });
+    fireEvent.click(addPhotoBtn);
+
+    // Submit
+    fireEvent.click(screen.getByTestId('submit-listing-btn'));
+
+    await waitFor(() => {
+      expect(handleSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'DONATION',
+          campaignNeedId: 'need-123',
+          campaignTitle: 'First-Year Physics Drive',
+          partnerName: 'Tezpur Book Bank',
+          title: 'Halliday and Resnick Physics',
+        })
+      );
+      expect(handleClose).toHaveBeenCalledOnce();
+    });
+  });
 });

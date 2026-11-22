@@ -15,6 +15,9 @@ import type {
   PartnerOrganization,
   CreatePartnerInput,
   ReviewPartnerInput,
+  CampaignNeed,
+  CreateCampaignNeedInput,
+  UpdateCampaignNeedInput,
 } from '@campusshelf/contracts';
 import { DonateBookModal } from './components/DonateBookModal';
 import { MyListings } from './components/MyListings';
@@ -29,6 +32,7 @@ import { CampusImpactPanel } from './components/CampusImpact';
 import { ReportModal } from './components/ReportModal';
 import { ModeratorQueue } from './components/ModeratorQueue';
 import { PartnerDirectory } from './components/PartnerDirectory';
+import { CampaignNeedsView } from './components/CampaignNeedsView';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -58,9 +62,13 @@ export default function App(): React.JSX.Element {
 
   // CS-006: Request state & member navigation view
   const [myRequests, setMyRequests] = useState<BookRequest[]>([]);
-  const [memberView, setMemberView] = useState<'browse' | 'partners' | 'listings' | 'requests' | 'history' | 'moderation'>('browse');
+  const [memberView, setMemberView] = useState<'browse' | 'campaigns' | 'partners' | 'listings' | 'requests' | 'history' | 'moderation'>('browse');
   const [partners, setPartners] = useState<PartnerOrganization[]>([]);
   const [allAdminPartners, setAllAdminPartners] = useState<PartnerOrganization[]>([]);
+
+  // CS-014: Campaign book needs state
+  const [campaignNeeds, setCampaignNeeds] = useState<CampaignNeed[]>([]);
+  const [selectedCampaignForDonation, setSelectedCampaignForDonation] = useState<CampaignNeed | null>(null);
 
   // CS-007: Donor Request Inbox state
   const [selectedListingForRequests, setSelectedListingForRequests] = useState<Listing | null>(null);
@@ -131,6 +139,16 @@ export default function App(): React.JSX.Element {
       .then((data) => {
         if (data && Array.isArray(data.partners)) {
           setPartners(data.partners);
+        }
+      })
+      .catch(() => {});
+
+    // CS-014: Fetch active campaign book needs
+    fetch('/api/campaigns/needs')
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (data && Array.isArray(data.needs)) {
+          setCampaignNeeds(data.needs);
         }
       })
       .catch(() => {});
@@ -890,6 +908,60 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  // CS-014: Campaign book needs handlers
+  const handleDonateForCampaign = (need: CampaignNeed) => {
+    setSelectedCampaignForDonation(need);
+    setIsDonateModalOpen(true);
+  };
+
+  const handleCreateCampaignNeed = async (input: CreateCampaignNeedInput) => {
+    const token = getAuthToken();
+    const res = await fetch('/api/campaigns/needs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to create campaign need');
+    }
+
+    const data = await res.json();
+    if (data?.need) {
+      setCampaignNeeds((prev) => [data.need, ...prev]);
+      return data.need;
+    }
+  };
+
+  const handleUpdateCampaignNeed = async (id: string, input: UpdateCampaignNeedInput) => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/campaigns/needs/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to update campaign need');
+    }
+
+    const data = await res.json();
+    if (data?.need) {
+      setCampaignNeeds((prev) =>
+        prev.map((n) => (n.id === id ? data.need : n))
+      );
+      return data.need;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
@@ -1080,6 +1152,22 @@ export default function App(): React.JSX.Element {
               📖 Browse Books
             </button>
             <button
+              onClick={() => setMemberView('campaigns')}
+              data-testid="tab-campaign-needs"
+              className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
+                memberView === 'campaigns'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>🌱 Campaigns</span>
+              {campaignNeeds.filter((n) => n.status === 'ACTIVE').length > 0 && (
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {campaignNeeds.filter((n) => n.status === 'ACTIVE').length}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setMemberView('partners')}
               data-testid="tab-partners"
               className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
@@ -1222,6 +1310,18 @@ export default function App(): React.JSX.Element {
           />
         )}
 
+        {/* CS-014: NGO & Community Book Needs / Campaigns */}
+        {memberView === 'campaigns' && (
+          <CampaignNeedsView
+            needs={campaignNeeds}
+            partners={partners}
+            isAdmin={currentUser?.role === 'MODERATOR' || currentUser?.role === 'ADMIN'}
+            onDonateForNeed={handleDonateForCampaign}
+            onCreateNeed={handleCreateCampaignNeed}
+            onUpdateNeed={handleUpdateCampaignNeed}
+          />
+        )}
+
         {/* CS-009: Public Campus Impact Dashboard */}
         <div className="w-full flex justify-center mb-8">
           <CampusImpactPanel impact={campusImpact} />
@@ -1277,6 +1377,7 @@ export default function App(): React.JSX.Element {
             <div>• CS-011 Secondary Sale Listings</div>
             <div>• CS-012 Buyer Enquiry + Offline Sale Handover</div>
             <div>• CS-013 Verified Partner Directory</div>
+            <div>• CS-014 NGO Book Needs / Campaign</div>
           </div>
         </div>
 
@@ -1293,13 +1394,24 @@ export default function App(): React.JSX.Element {
         )}
       </main>
 
-      {/* Donate a Book Modal (CS-004) */}
+      {/* Donate a Book Modal (CS-004 & CS-014) */}
       <DonateBookModal
         isOpen={isDonateModalOpen}
-        onClose={() => setIsDonateModalOpen(false)}
-        onSuccess={handleListingCreated}
+        onClose={() => {
+          setIsDonateModalOpen(false);
+          setSelectedCampaignForDonation(null);
+        }}
+        onSuccess={(newListing) => {
+          handleListingCreated(newListing);
+          setSelectedCampaignForDonation(null);
+        }}
         token={getAuthToken()}
         defaultCampusName={currentUser?.campusName || 'Darrang College'}
+        initialCampaignNeedId={selectedCampaignForDonation?.id}
+        initialCampaignTitle={selectedCampaignForDonation?.title}
+        initialPartnerName={selectedCampaignForDonation?.partnerName}
+        initialSubject={selectedCampaignForDonation?.category}
+        initialCourse={selectedCampaignForDonation?.course || undefined}
       />
 
       {/* Book Detail Modal (CS-005 & CS-006) */}

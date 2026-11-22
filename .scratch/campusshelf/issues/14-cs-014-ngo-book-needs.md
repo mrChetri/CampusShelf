@@ -4,9 +4,9 @@
 
 **Blocked by:** 13: CS-013 Verified Partner Directory, 04: CS-004 Create Donation Listing
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] Prisma schema includes `CampaignNeed` model linked to `PartnerOrganization`
-- [ ] Partner manager can create and update book needs with target quantities
-- [ ] Students can view needed books and create a donation listing directly linked to a campaign
-- [ ] Partner handover flow marks campaign contribution fulfilled upon confirmed handover
+- [x] Prisma schema includes `CampaignNeed` model linked to `PartnerOrganization`
+- [x] Partner manager can create and update book needs with target quantities
+- [x] Students can view needed books and create a donation listing directly linked to a campaign
+- [x] Partner handover flow marks campaign contribution fulfilled upon confirmed handover

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { CreateListingInput, Listing, ListingsQuery, ListingsFeedResponse } from './listing.schema';
 import { UserProfile } from '../user/user.schema';
 import { campusService } from '../campus/campus.service';
+import { campaignService } from '../campaign/campaign.service';
 
 export class ListingService {
   private listings: Map<string, Listing> = new Map();
@@ -25,6 +26,16 @@ export class ListingService {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
 
+    let campaignTitle: string | null = null;
+    let partnerName: string | null = null;
+    if (input.campaignNeedId) {
+      const need = campaignService.getNeedById(input.campaignNeedId);
+      if (need) {
+        campaignTitle = need.title;
+        partnerName = need.partnerName;
+      }
+    }
+
     const newListing: Listing = {
       id,
       donorId: donor.id,
@@ -45,6 +56,9 @@ export class ListingService {
       status: 'AVAILABLE',
       type: input.type ?? 'DONATION',
       price: input.type === 'SALE' ? (input.price ?? null) : null,
+      campaignNeedId: input.campaignNeedId ?? null,
+      campaignTitle,
+      partnerName,
       createdAt: now,
       updatedAt: now,
     };
@@ -195,6 +209,10 @@ export class ListingService {
       status: listing.type === 'SALE' ? 'SOLD' : 'DONATED',
       updatedAt: new Date().toISOString(),
     };
+
+    if (listing.campaignNeedId) {
+      campaignService.recordFulfillment(listing.campaignNeedId, 1);
+    }
 
     this.listings.set(listingId, updated);
     return updated;

@@ -10,6 +10,7 @@ import { handoverRoutes } from './modules/handover/handover.routes';
 import { notificationRoutes } from './modules/notification/notification.routes';
 import { reportRoutes, adminRoutes } from './modules/moderation/moderation.routes';
 import { publicPartnerRoutes, adminPartnerRoutes } from './modules/partner/partner.routes';
+import { campaignRoutes } from './modules/campaign/campaign.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -56,6 +57,10 @@ export function createApp(): Express {
   app.use('/api/partners', publicPartnerRoutes);
   app.use('/admin/partners', adminPartnerRoutes);
   app.use('/api/admin/partners', adminPartnerRoutes);
+
+  // Mount campaign endpoints (CS-014)
+  app.use('/campaigns', campaignRoutes);
+  app.use('/api/campaigns', campaignRoutes);
 
   return app;
 }

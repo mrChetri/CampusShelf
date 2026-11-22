@@ -526,6 +526,58 @@ describe('App Root Shell (Frontend Seam)', () => {
             }),
           });
         }
+        if (url.includes('/api/campaigns/needs') && options?.method === 'POST') {
+          let body: any = {};
+          try {
+            body = options?.body ? JSON.parse(options.body as string) : {};
+          } catch {}
+          return Promise.resolve({
+            ok: true,
+            status: 201,
+            json: async () => ({
+              need: {
+                id: 'need-new-123',
+                partnerId: body.partnerId || 'p-1',
+                partnerName: 'Darrang College Central Library',
+                title: body.title || 'New Need',
+                category: body.category || 'ACADEMIC',
+                course: body.course || null,
+                description: body.description || '',
+                targetQuantity: body.targetQuantity || 10,
+                fulfilledQuantity: 0,
+                status: 'ACTIVE',
+                urgent: Boolean(body.urgent),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            }),
+          });
+        }
+        if (url.includes('/api/campaigns/needs')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              needs: [
+                {
+                  id: 'need-test-1',
+                  partnerId: 'p-1',
+                  partnerName: 'Darrang College Central Library',
+                  title: 'B.Sc Semester 1 Physics Textbook Drive',
+                  category: 'ACADEMIC',
+                  course: 'B.Sc Physics',
+                  description: 'Textbook collection for high school graduates.',
+                  targetQuantity: 15,
+                  fulfilledQuantity: 3,
+                  status: 'ACTIVE',
+                  urgent: true,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+              total: 1,
+            }),
+          });
+        }
         if (url.includes('/api/partners')) {
           return Promise.resolve({
             ok: true,
@@ -1536,5 +1588,42 @@ describe('App Root Shell (Frontend Seam)', () => {
     const libFilter = screen.getByTestId('filter-type-CAMPUS_LIBRARY');
     fireEvent.click(libFilter);
     expect(screen.getByText('Darrang College Central Library')).toBeInTheDocument();
+  });
+
+  it('navigates to Campaigns tab, views book drives, and opens donate modal pre-filled with campaign data (CS-014)', async () => {
+    render(<App />);
+
+    // Authenticate as campus member
+    const signInBtn = screen.getByRole('button', { name: /sign in with google/i });
+    fireEvent.click(signInBtn);
+
+    const inviteInput = screen.getByTestId('invite-code-input');
+    fireEvent.change(inviteInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(screen.getByTestId('join-campus-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('member-nav-tabs')).toBeInTheDocument();
+    });
+
+    // Switch to Campaigns tab
+    const campaignsTab = screen.getByTestId('tab-campaign-needs');
+    fireEvent.click(campaignsTab);
+
+    // Verify Campaign view rendered with active book drive
+    expect(await screen.findByTestId('campaign-needs-view')).toBeInTheDocument();
+    expect(screen.getByText('B.Sc Semester 1 Physics Textbook Drive')).toBeInTheDocument();
+    expect(screen.getByTestId('need-urgent-badge')).toHaveTextContent('URGENT NEED');
+    expect(screen.getByTestId('need-progress-text')).toHaveTextContent('3 / 15 Books Collected');
+
+    // Click "Donate Book" for this drive
+    const donateBtn = screen.getByTestId('donate-for-campaign-btn');
+    fireEvent.click(donateBtn);
+
+    // Verify Donate Book modal opened with campaign banner and pre-populated values
+    expect(screen.getByTestId('donate-book-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('campaign-donation-banner')).toBeInTheDocument();
+    expect(screen.getByText(/Donating to Campaign:/i)).toBeInTheDocument();
+    expect(screen.getByText(/B.Sc Semester 1 Physics Textbook Drive/i)).toBeInTheDocument();
+    expect(screen.getByTestId('input-course')).toHaveValue('B.Sc Physics');
   });
 });

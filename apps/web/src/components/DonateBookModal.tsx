@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Listing, ListingCondition, ListingType } from '@campusshelf/contracts';
 
 interface DonateBookModalProps {
@@ -7,6 +7,11 @@ interface DonateBookModalProps {
   onSuccess: (newListing: Listing) => void;
   token?: string;
   defaultCampusName?: string;
+  initialCampaignNeedId?: string;
+  initialCampaignTitle?: string;
+  initialPartnerName?: string;
+  initialSubject?: string;
+  initialCourse?: string;
 }
 
 const CONDITION_GUIDE: Record<ListingCondition, { label: string; desc: string }> = {
@@ -32,13 +37,18 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
   onSuccess,
   token,
   defaultCampusName = 'Campus',
+  initialCampaignNeedId,
+  initialCampaignTitle,
+  initialPartnerName,
+  initialSubject,
+  initialCourse,
 }) => {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [isbn, setIsbn] = useState('');
   const [edition, setEdition] = useState('');
-  const [course, setCourse] = useState('');
-  const [subject, setSubject] = useState('');
+  const [course, setCourse] = useState(initialCourse || '');
+  const [subject, setSubject] = useState(initialSubject || '');
   const [semester, setSemester] = useState('');
   const [condition, setCondition] = useState<ListingCondition>('GOOD');
   const [listingType, setListingType] = useState<ListingType>('DONATION');
@@ -52,6 +62,14 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialSubject) setSubject(initialSubject);
+      if (initialCourse) setCourse(initialCourse);
+      if (initialCampaignNeedId) setListingType('DONATION');
+    }
+  }, [isOpen, initialSubject, initialCourse, initialCampaignNeedId]);
 
   if (!isOpen) return null;
 
@@ -149,6 +167,7 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
       description: description.trim() || undefined,
       type: listingType,
       price: parsedPrice,
+      campaignNeedId: initialCampaignNeedId || undefined,
     };
 
     try {
@@ -188,6 +207,9 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
           status: 'AVAILABLE',
           type: payload.type,
           price: payload.price ?? null,
+          campaignNeedId: initialCampaignNeedId ?? null,
+          campaignTitle: initialCampaignTitle ?? null,
+          partnerName: initialPartnerName ?? null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -219,6 +241,9 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
         status: 'AVAILABLE',
         type: payload.type,
         price: payload.price ?? null,
+        campaignNeedId: initialCampaignNeedId ?? null,
+        campaignTitle: initialCampaignTitle ?? null,
+        partnerName: initialPartnerName ?? null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -250,6 +275,25 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
             ✕
           </button>
         </div>
+
+        {/* Campaign Donation Banner */}
+        {initialCampaignNeedId && (
+          <div
+            data-testid="campaign-donation-banner"
+            className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800"
+          >
+            <div>
+              <span className="font-bold">🌱 Donating to Campaign:</span>{' '}
+              {initialCampaignTitle || 'Community Drive'}
+              {initialPartnerName && (
+                <span className="ml-1 text-emerald-600 font-medium">({initialPartnerName})</span>
+              )}
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-semibold text-[10px]">
+              Verified Drive
+            </span>
+          </div>
+        )}
 
         {/* Condition Guide helper card */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900">
