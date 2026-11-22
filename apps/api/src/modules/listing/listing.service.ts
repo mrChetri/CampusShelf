@@ -56,6 +56,7 @@ export class ListingService {
       status: 'AVAILABLE',
       type: input.type ?? 'DONATION',
       price: input.type === 'SALE' ? (input.price ?? null) : null,
+      exchangePreferences: input.exchangePreferences ?? null,
       campaignNeedId: input.campaignNeedId ?? null,
       campaignTitle,
       partnerName,
@@ -206,13 +207,31 @@ export class ListingService {
 
     const updated: Listing = {
       ...listing,
-      status: listing.type === 'SALE' ? 'SOLD' : 'DONATED',
+      status: listing.type === 'SALE' ? 'SOLD' : listing.type === 'EXCHANGE' ? 'EXCHANGED' : 'DONATED',
       updatedAt: new Date().toISOString(),
     };
 
     if (listing.campaignNeedId) {
       campaignService.recordFulfillment(listing.campaignNeedId, 1);
     }
+
+    this.listings.set(listingId, updated);
+    return updated;
+  }
+
+  public completeListingAsExchanged(listingId: string): Listing {
+    const listing = this.listings.get(listingId);
+    if (!listing) {
+      const err: any = new Error('Listing not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const updated: Listing = {
+      ...listing,
+      status: 'EXCHANGED',
+      updatedAt: new Date().toISOString(),
+    };
 
     this.listings.set(listingId, updated);
     return updated;

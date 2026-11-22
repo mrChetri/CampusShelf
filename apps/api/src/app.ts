@@ -12,6 +12,7 @@ import { reportRoutes, adminRoutes } from './modules/moderation/moderation.route
 import { publicPartnerRoutes, adminPartnerRoutes } from './modules/partner/partner.routes';
 import { campaignRoutes } from './modules/campaign/campaign.routes';
 import { bookDriveRouter } from './modules/book-drive/book-drive.routes';
+import { exchangeRoutes } from './modules/exchange/exchange.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -66,6 +67,10 @@ export function createApp(): Express {
   // Mount semester book drive endpoints (CS-015)
   app.use('/drives', bookDriveRouter);
   app.use('/api/drives', bookDriveRouter);
+
+  // Mount book exchange endpoints (CS-016)
+  app.use('/exchanges', exchangeRoutes);
+  app.use('/api/exchanges', exchangeRoutes);
 
   return app;
 }

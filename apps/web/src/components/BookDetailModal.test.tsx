@@ -202,4 +202,51 @@ describe('BookDetailModal Component', () => {
     );
     expect(screen.getByTestId('request-pending-badge')).toHaveTextContent(/Enquiry Sent \(Pending\)/i);
   });
+
+  it('renders exchange listing with barter badge, exchange preferences banner, and propose exchange button (CS-016)', () => {
+    const exchangeListing: PublicListing = {
+      id: 'exchange-detail-1',
+      donorId: 'u4444444-0000-0000-0000-000000000004',
+      donorName: 'Ananya Borah',
+      campusId: '550e8400-e29b-41d4-a716-446655440000',
+      campusName: 'Darrang College',
+      title: 'Database System Concepts',
+      author: 'Silberschatz',
+      subject: 'Computer Science',
+      condition: 'LIKE_NEW',
+      pickupLocation: 'Central Library Foyer',
+      photos: ['https://example.com/db.jpg'],
+      status: 'AVAILABLE',
+      type: 'EXCHANGE',
+      exchangePreferences: 'Seeking Operating System Concepts or Computer Networks',
+      createdAt: '2026-11-20T10:00:00.000Z',
+      updatedAt: '2026-11-20T10:00:00.000Z',
+    };
+
+    const handlePropose = vi.fn();
+
+    render(
+      <BookDetailModal
+        isOpen={true}
+        listing={exchangeListing}
+        onClose={vi.fn()}
+        isCampusMember={true}
+        currentUserId="peer-student-1"
+        onProposeExchange={handlePropose}
+      />
+    );
+
+    // Badges & Banner
+    expect(screen.getByTestId('badge-exchange')).toBeInTheDocument();
+    expect(screen.getByTestId('exchange-preferences-banner')).toBeInTheDocument();
+    expect(screen.getByText(/Seeking in return: "Seeking Operating System Concepts or Computer Networks"/i)).toBeInTheDocument();
+
+    // Propose exchange CTA button
+    const proposeBtn = screen.getByTestId('open-exchange-proposal-btn');
+    expect(proposeBtn).toBeInTheDocument();
+    expect(proposeBtn).toHaveTextContent(/Propose Book Exchange/i);
+
+    fireEvent.click(proposeBtn);
+    expect(handlePropose).toHaveBeenCalledWith(exchangeListing);
+  });
 });

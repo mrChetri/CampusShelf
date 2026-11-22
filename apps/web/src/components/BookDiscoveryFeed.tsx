@@ -128,7 +128,7 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
             </select>
           </div>
 
-          {/* Listing Type Filter (CS-011) */}
+          {/* Listing Type Filter (CS-011 & CS-016) */}
           <div>
             <select
               data-testid="filter-type"
@@ -138,6 +138,7 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
             >
               <option value="">All Types (Donations First)</option>
               <option value="DONATION">🎁 Free Donations Only</option>
+              <option value="EXCHANGE">🔄 Exchange (Barter) Only</option>
               <option value="SALE">🏷️ For Sale Only</option>
             </select>
           </div>
@@ -224,6 +225,13 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
                     >
                       FREE DONATION
                     </span>
+                  ) : listing.type === 'EXCHANGE' ? (
+                    <span
+                      data-testid="badge-exchange"
+                      className="bg-sky-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1"
+                    >
+                      <span>🔄 BOOK EXCHANGE</span>
+                    </span>
                   ) : (
                     <span
                       data-testid="badge-sale"
@@ -274,6 +282,10 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
                   {listing.type === 'SALE' && listing.price !== null && listing.price !== undefined ? (
                     <span data-testid="card-price" className="font-extrabold text-amber-700 text-xs">
                       ₹{listing.price}
+                    </span>
+                  ) : listing.type === 'EXCHANGE' ? (
+                    <span data-testid="card-exchange" className="font-semibold text-sky-700 text-xs">
+                      🔄 Open to Barter
                     </span>
                   ) : (
                     <span className="font-medium text-emerald-700">View Details →</span>

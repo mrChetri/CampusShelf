@@ -22,6 +22,8 @@ model User {
   status             String        @default("ACTIVE")
   reportsFiled       Report[]      @relation("ReporterReports")
   auditEvents        AuditEvent[]  @relation("ActorAuditEvents")
+  proposedExchanges  ExchangeProposal[] @relation("ProposerExchanges")
+  receivedExchanges  ExchangeProposal[] @relation("TargetOwnerExchanges")
   createdAt          DateTime      @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -75,17 +77,20 @@ model Listing {
   condition      String         @default("GOOD")
   pickupLocation String
   description    String?
-  status         String         @default("AVAILABLE")
-  reservedUntil  DateTime?
-  type           String         @default("DONATION")
-  price          Int?
-  campaignNeedId String?
-  campaignNeed   CampaignNeed?  @relation(fields: [campaignNeedId], references: [id])
-  photos         ListingPhoto[]
-  requests       BookRequest[]
-  handovers      Handover[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  status              String             @default("AVAILABLE")
+  reservedUntil       DateTime?
+  type                String             @default("DONATION")
+  price               Int?
+  exchangePreferences String?
+  campaignNeedId      String?
+  campaignNeed        CampaignNeed?      @relation(fields: [campaignNeedId], references: [id])
+  photos              ListingPhoto[]
+  requests            BookRequest[]
+  handovers           Handover[]
+  targetExchanges     ExchangeProposal[] @relation("TargetListing")
+  offeredExchanges    ExchangeProposal[] @relation("OfferedListing")
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@map("listings")
 }
@@ -242,4 +247,30 @@ model CampaignNeed {
   @@index([partnerId])
   @@index([status])
   @@map("campaign_needs")
+}
+
+model ExchangeProposal {
+  id               String    @id @default(uuid())
+  proposerId       String
+  proposer         User      @relation("ProposerExchanges", fields: [proposerId], references: [id])
+  targetOwnerId    String
+  targetOwner      User      @relation("TargetOwnerExchanges", fields: [targetOwnerId], references: [id])
+  targetListingId  String
+  targetListing    Listing   @relation("TargetListing", fields: [targetListingId], references: [id], onDelete: Cascade)
+  offeredListingId String
+  offeredListing   Listing   @relation("OfferedListing", fields: [offeredListingId], references: [id], onDelete: Cascade)
+  pickupLocation   String
+  message          String?
+  status           String    @default("PENDING") // PENDING, ACCEPTED, DECLINED, COMPLETED, CANCELLED
+  reservedUntil    DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([proposerId])
+  @@index([targetOwnerId])
+  @@index([targetListingId])
+  @@index([offeredListingId])
+  @@index([status])
+  @@map("exchange_proposals")
 }
