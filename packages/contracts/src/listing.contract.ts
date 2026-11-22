@@ -49,6 +49,7 @@ export const CreateListingInputSchema = z
       .max(5000, 'Asking price must not exceed ₹5,000 for student affordability')
       .optional()
       .nullable(),
+    campaignNeedId: z.string().uuid().nullable().optional(),
   })
   .refine(
     (data) => {
@@ -86,6 +87,9 @@ export const ListingSchema = z.object({
   reservedUntil: z.string().datetime().nullable().optional(),
   type: ListingTypeEnum.default('DONATION'),
   price: z.number().int().nullable().optional(),
+  campaignNeedId: z.string().uuid().nullable().optional(),
+  campaignTitle: z.string().nullable().optional(),
+  partnerName: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

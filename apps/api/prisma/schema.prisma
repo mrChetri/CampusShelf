@@ -79,6 +79,8 @@ model Listing {
   reservedUntil  DateTime?
   type           String         @default("DONATION")
   price          Int?
+  campaignNeedId String?
+  campaignNeed   CampaignNeed?  @relation(fields: [campaignNeedId], references: [id])
   photos         ListingPhoto[]
   requests       BookRequest[]
   handovers      Handover[]
@@ -212,10 +214,32 @@ model PartnerOrganization {
   verificationStatus String    @default("PENDING") // PENDING, VERIFIED, REJECTED
   verifiedAt         DateTime?
   adminReviewNotes   String?
+  campaignNeeds      CampaignNeed[]
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   @@index([verificationStatus])
   @@index([campusId])
   @@map("partner_organizations")
+}
+
+model CampaignNeed {
+  id                String              @id @default(uuid())
+  partnerId         String
+  partner           PartnerOrganization @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  title             String
+  category          String
+  course            String?
+  description       String?
+  targetQuantity    Int
+  fulfilledQuantity Int                 @default(0)
+  status            String              @default("ACTIVE") // ACTIVE, FULFILLED, PAUSED
+  urgent            Boolean             @default(false)
+  listings          Listing[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([partnerId])
+  @@index([status])
+  @@map("campaign_needs")
 }

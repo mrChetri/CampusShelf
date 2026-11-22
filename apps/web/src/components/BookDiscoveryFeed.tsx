@@ -238,6 +238,14 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
                   <span className="bg-slate-900/70 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
                     {listing.condition}
                   </span>
+                  {listing.campaignNeedId && (
+                    <span
+                      data-testid="badge-campaign"
+                      className="bg-teal-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1"
+                    >
+                      🌱 {listing.partnerName ? `Drive: ${listing.partnerName}` : 'Campaign Need'}
+                    </span>
+                  )}
                 </div>
               </div>
 
