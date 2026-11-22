@@ -4,6 +4,7 @@ import { listingService } from '../listing/listing.service';
 import { campusService } from '../campus/campus.service';
 import { handoverService } from '../handover/handover.service';
 import { notificationService } from '../notification/notification.service';
+import { userService } from '../user/user.service';
 
 export class RequestService {
   private requests: BookRequest[] = [];
@@ -15,6 +16,13 @@ export class RequestService {
   ): BookRequest {
     if (requester.role !== 'CAMPUS_MEMBER') {
       const err = new Error('Forbidden: only Campus Members can request books. Please join your campus first.');
+      (err as any).statusCode = 403;
+      throw err;
+    }
+
+    const requesterProfile = userService.getProfileById(requester.id);
+    if (requesterProfile?.status === 'SUSPENDED') {
+      const err = new Error('Forbidden: Account is suspended');
       (err as any).statusCode = 403;
       throw err;
     }

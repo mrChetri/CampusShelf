@@ -9,6 +9,7 @@ interface BookDetailModalProps {
   currentUserId?: string;
   onRequestListing?: (listingId: string, message?: string) => Promise<boolean | void>;
   hasActiveRequest?: boolean;
+  onReportListing?: (listing: PublicListing) => void;
 }
 
 const CONDITION_GUIDE: Record<string, string> = {
@@ -27,6 +28,7 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
   currentUserId,
   onRequestListing,
   hasActiveRequest = false,
+  onReportListing,
 }) => {
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
   const [isRequesting, setIsRequesting] = useState<boolean>(false);
@@ -275,12 +277,24 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
 
         {/* Footer CTA */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="text-xs font-semibold text-slate-600 hover:text-slate-800 px-4 py-2 rounded-lg"
-          >
-            Back to Browse
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onClose}
+              className="text-xs font-semibold text-slate-600 hover:text-slate-800 px-4 py-2 rounded-lg"
+            >
+              Back to Browse
+            </button>
+            {onReportListing && !isOwner && isCampusMember && (
+              <button
+                data-testid="report-listing-btn"
+                onClick={() => onReportListing(listing)}
+                className="text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1"
+              >
+                <span>🚩</span>
+                <span>Report</span>
+              </button>
+            )}
+          </div>
 
           {isOwner ? (
             <span

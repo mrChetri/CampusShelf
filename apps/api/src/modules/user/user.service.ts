@@ -17,6 +17,7 @@ export class UserService {
       fullName: authUser.fullName,
       avatarUrl: authUser.avatarUrl ?? null,
       role: 'REGISTERED',
+      status: 'ACTIVE',
       createdAt: new Date().toISOString(),
     };
 
@@ -43,6 +44,36 @@ export class UserService {
       ...updates,
     };
 
+    this.profiles.set(userId, updated);
+    return updated;
+  }
+
+  public suspendUser(userId: string): UserProfile {
+    const existing = this.profiles.get(userId);
+    if (!existing) {
+      const err: any = new Error('User not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    const updated: UserProfile = {
+      ...existing,
+      status: 'SUSPENDED',
+    };
+    this.profiles.set(userId, updated);
+    return updated;
+  }
+
+  public unsuspendUser(userId: string): UserProfile {
+    const existing = this.profiles.get(userId);
+    if (!existing) {
+      const err: any = new Error('User not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    const updated: UserProfile = {
+      ...existing,
+      status: 'ACTIVE',
+    };
     this.profiles.set(userId, updated);
     return updated;
   }

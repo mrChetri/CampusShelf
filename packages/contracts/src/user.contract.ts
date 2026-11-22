@@ -17,6 +17,7 @@ export const UserProfileSchema = z.object({
   role: UserRoleSchema,
   campusId: z.string().uuid().nullable().optional(),
   campusName: z.string().nullable().optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED']).default('ACTIVE').optional(),
   createdAt: z.string().datetime(),
 });
 

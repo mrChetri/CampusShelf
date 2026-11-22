@@ -15,6 +15,7 @@ export const ListingStatusEnum = z.enum([
   'RESERVED',
   'DONATED',
   'WITHDRAWN',
+  'HIDDEN',
 ]);
 
 export type ListingStatus = z.infer<typeof ListingStatusEnum>;

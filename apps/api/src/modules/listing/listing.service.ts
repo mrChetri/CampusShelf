@@ -11,6 +11,12 @@ export class ListingService {
   }
 
   public createListing(donor: UserProfile, input: CreateListingInput): Listing {
+    if (donor.status === 'SUSPENDED') {
+      const err: any = new Error('Forbidden: Account is suspended');
+      err.statusCode = 403;
+      throw err;
+    }
+
     if (!donor.campusId) {
       throw new Error('Campus affiliation required to publish listings');
     }
@@ -47,7 +53,9 @@ export class ListingService {
   }
 
   public getListingsFeed(query: ListingsQuery): ListingsFeedResponse {
-    let items = Array.from(this.listings.values());
+    let items = Array.from(this.listings.values()).filter(
+      (item) => item.status !== 'HIDDEN'
+    );
 
     if (query.search) {
       const q = query.search.toLowerCase();
@@ -203,6 +211,42 @@ export class ListingService {
       ...listing,
       status: 'AVAILABLE',
       reservedUntil: null,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.listings.set(listingId, updated);
+    return updated;
+  }
+
+  public hideListing(listingId: string): Listing {
+    const listing = this.listings.get(listingId);
+    if (!listing) {
+      const err: any = new Error('Listing not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const updated: Listing = {
+      ...listing,
+      status: 'HIDDEN',
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.listings.set(listingId, updated);
+    return updated;
+  }
+
+  public unhideListing(listingId: string): Listing {
+    const listing = this.listings.get(listingId);
+    if (!listing) {
+      const err: any = new Error('Listing not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const updated: Listing = {
+      ...listing,
+      status: 'AVAILABLE',
       updatedAt: new Date().toISOString(),
     };
 

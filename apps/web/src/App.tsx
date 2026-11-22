@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import type { HealthResponse, UserProfile, Campus, Listing, PublicListing, BookRequest, Notification, CampusImpact } from '@campusshelf/contracts';
+import type {
+  HealthResponse,
+  UserProfile,
+  Campus,
+  Listing,
+  PublicListing,
+  BookRequest,
+  Notification,
+  CampusImpact,
+  Report,
+  AuditEvent,
+  ModerationAction,
+  ReportReason,
+} from '@campusshelf/contracts';
 import { DonateBookModal } from './components/DonateBookModal';
 import { MyListings } from './components/MyListings';
 import { BookDiscoveryFeed } from './components/BookDiscoveryFeed';
@@ -10,6 +23,8 @@ import { DisputeModal } from './components/DisputeModal';
 import { NotificationBell } from './components/NotificationBell';
 import { DonationHistory } from './components/DonationHistory';
 import { CampusImpactPanel } from './components/CampusImpact';
+import { ReportModal } from './components/ReportModal';
+import { ModeratorQueue } from './components/ModeratorQueue';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -39,7 +54,7 @@ export default function App(): React.JSX.Element {
 
   // CS-006: Request state & member navigation view
   const [myRequests, setMyRequests] = useState<BookRequest[]>([]);
-  const [memberView, setMemberView] = useState<'browse' | 'listings' | 'requests' | 'history'>('browse');
+  const [memberView, setMemberView] = useState<'browse' | 'listings' | 'requests' | 'history' | 'moderation'>('browse');
 
   // CS-007: Donor Request Inbox state
   const [selectedListingForRequests, setSelectedListingForRequests] = useState<Listing | null>(null);
@@ -57,6 +72,16 @@ export default function App(): React.JSX.Element {
   const [campusImpact, setCampusImpact] = useState<CampusImpact | null>(null);
   const [historyBooksGiven, setHistoryBooksGiven] = useState<Listing[]>([]);
   const [historyBooksReceived, setHistoryBooksReceived] = useState<BookRequest[]>([]);
+
+  // CS-010: Moderation & Reports state
+  const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
+  const [reportTarget, setReportTarget] = useState<{
+    targetType: 'LISTING' | 'USER';
+    targetId: string;
+    targetTitle?: string;
+  } | null>(null);
+  const [moderationReports, setModerationReports] = useState<Report[]>([]);
+  const [moderationAuditLogs, setModerationAuditLogs] = useState<AuditEvent[]>([]);
 
   const getAuthToken = () => {
     if (!currentUser) return undefined;
@@ -97,7 +122,11 @@ export default function App(): React.JSX.Element {
 
   // Fetch my listings when user becomes a Campus Member
   useEffect(() => {
-    if (currentUser?.role === 'CAMPUS_MEMBER') {
+    if (
+      currentUser?.role === 'CAMPUS_MEMBER' ||
+      currentUser?.role === 'MODERATOR' ||
+      currentUser?.role === 'ADMIN'
+    ) {
       const token = getAuthToken();
       fetch('/api/listings/mine', {
         headers: {
@@ -164,6 +193,31 @@ export default function App(): React.JSX.Element {
           })
           .catch(() => {});
       }
+
+      // CS-010: Fetch moderation reports & audit logs for moderators/admins
+      if (currentUser.role === 'MODERATOR' || currentUser.role === 'ADMIN') {
+        fetch('/api/admin/reports', {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        })
+          .then((res) => (res.ok ? res.json() : Promise.reject()))
+          .then((data) => {
+            if (data && Array.isArray(data.reports)) {
+              setModerationReports(data.reports);
+            }
+          })
+          .catch(() => {});
+
+        fetch('/api/admin/audit-logs', {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        })
+          .then((res) => (res.ok ? res.json() : Promise.reject()))
+          .then((data) => {
+            if (data && Array.isArray(data.auditLogs)) {
+              setModerationAuditLogs(data.auditLogs);
+            }
+          })
+          .catch(() => {});
+      }
     } else {
       setMyListings([]);
       setMyRequests([]);
@@ -171,6 +225,8 @@ export default function App(): React.JSX.Element {
       setNotificationUnreadCount(0);
       setHistoryBooksGiven([]);
       setHistoryBooksReceived([]);
+      setModerationReports([]);
+      setModerationAuditLogs([]);
     }
   }, [currentUser]);
 
@@ -637,6 +693,94 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  const handleOpenReportModal = (target: {
+    targetType: 'LISTING' | 'USER';
+    targetId: string;
+    targetTitle?: string;
+  }) => {
+    setReportTarget(target);
+    setIsReportModalOpen(true);
+  };
+
+  const handleSubmitReport = async (
+    targetType: 'LISTING' | 'USER',
+    targetId: string,
+    reason: ReportReason,
+    details?: string
+  ) => {
+    const token = getAuthToken();
+    const res = await fetch('/api/reports', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ targetType, targetId, reason, details }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to submit report');
+    }
+
+    const data = await res.json();
+    if (data?.report && (currentUser?.role === 'MODERATOR' || currentUser?.role === 'ADMIN')) {
+      setModerationReports((prev) => [data.report, ...prev]);
+    }
+  };
+
+  const handleModerateAction = async (
+    action: ModerationAction,
+    targetType: 'LISTING' | 'USER',
+    targetId: string,
+    reason: string,
+    reportId?: string
+  ) => {
+    const token = getAuthToken();
+    const res = await fetch('/api/admin/moderate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ action, targetType, targetId, reason, reportId }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to execute moderation action');
+    }
+
+    const data = await res.json();
+    if (data?.auditEvent) {
+      setModerationAuditLogs((prev) => {
+        if (prev.some((a) => a.id === data.auditEvent.id)) return prev;
+        return [data.auditEvent, ...prev];
+      });
+    }
+    if (data?.report) {
+      setModerationReports((prev) =>
+        prev.map((r) => (r.id === data.report.id ? data.report : r))
+      );
+    } else if (reportId) {
+      setModerationReports((prev) =>
+        prev.map((r) =>
+          r.id === reportId
+            ? {
+                ...r,
+                status: action === 'DISMISS_REPORT' ? 'DISMISSED' : 'RESOLVED',
+                resolutionNotes: reason,
+              }
+            : r
+        )
+      );
+    }
+
+    if (action === 'HIDE_LISTING') {
+      setMyListings((prev) => prev.filter((l) => l.id !== targetId));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
@@ -797,7 +941,10 @@ export default function App(): React.JSX.Element {
         )}
 
         {/* CS-006: Navigation tabs for Campus Members */}
-        {currentUser && currentUser.role === 'CAMPUS_MEMBER' && (
+        {currentUser &&
+          (currentUser.role === 'CAMPUS_MEMBER' ||
+            currentUser.role === 'MODERATOR' ||
+            currentUser.role === 'ADMIN') && (
           <div className="w-full flex items-center justify-center space-x-2 mb-6" data-testid="member-nav-tabs">
             <button
               onClick={() => setMemberView('browse')}
@@ -853,37 +1000,78 @@ export default function App(): React.JSX.Element {
             >
               <span>📜 History</span>
             </button>
+            {(currentUser.role === 'MODERATOR' || currentUser.role === 'ADMIN') && (
+              <button
+                onClick={() => setMemberView('moderation')}
+                data-testid="tab-moderation"
+                className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
+                  memberView === 'moderation'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <span>🛡️ Moderation</span>
+                {moderationReports.filter((r) => r.status === 'PENDING').length > 0 && (
+                  <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {moderationReports.filter((r) => r.status === 'PENDING').length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         )}
 
-        {/* CS-004: My Listings section for Campus Members */}
-        {currentUser && currentUser.role === 'CAMPUS_MEMBER' && memberView === 'listings' && (
-          <MyListings
-            listings={myListings}
-            onWithdraw={handleWithdrawListing}
-            onOpenDonateModal={() => setIsDonateModalOpen(true)}
-            onViewRequests={handleViewListingRequests}
-            onCompleteHandover={handleCompleteHandover}
-          />
-        )}
+        {/* CS-004: My Listings section for Campus Members / Staff */}
+        {currentUser &&
+          (currentUser.role === 'CAMPUS_MEMBER' ||
+            currentUser.role === 'MODERATOR' ||
+            currentUser.role === 'ADMIN') &&
+          memberView === 'listings' && (
+            <MyListings
+              listings={myListings}
+              onWithdraw={handleWithdrawListing}
+              onOpenDonateModal={() => setIsDonateModalOpen(true)}
+              onViewRequests={handleViewListingRequests}
+              onCompleteHandover={handleCompleteHandover}
+            />
+          )}
 
-        {/* CS-006: My Requests section for Campus Members */}
-        {currentUser && currentUser.role === 'CAMPUS_MEMBER' && memberView === 'requests' && (
-          <MyRequests
-            requests={myRequests}
-            onCancelRequest={handleCancelRequest}
-            onBrowseBooks={() => setMemberView('browse')}
-            onReportProblem={handleOpenDisputeModal}
-          />
-        )}
+        {/* CS-006: My Requests section for Campus Members / Staff */}
+        {currentUser &&
+          (currentUser.role === 'CAMPUS_MEMBER' ||
+            currentUser.role === 'MODERATOR' ||
+            currentUser.role === 'ADMIN') &&
+          memberView === 'requests' && (
+            <MyRequests
+              requests={myRequests}
+              onCancelRequest={handleCancelRequest}
+              onBrowseBooks={() => setMemberView('browse')}
+              onReportProblem={handleOpenDisputeModal}
+            />
+          )}
 
-        {/* CS-009: Donation History section for Campus Members */}
-        {currentUser && currentUser.role === 'CAMPUS_MEMBER' && memberView === 'history' && (
-          <DonationHistory
-            booksGiven={historyBooksGiven}
-            booksReceived={historyBooksReceived}
-          />
-        )}
+        {/* CS-009: Donation History section for Campus Members / Staff */}
+        {currentUser &&
+          (currentUser.role === 'CAMPUS_MEMBER' ||
+            currentUser.role === 'MODERATOR' ||
+            currentUser.role === 'ADMIN') &&
+          memberView === 'history' && (
+            <DonationHistory
+              booksGiven={historyBooksGiven}
+              booksReceived={historyBooksReceived}
+            />
+          )}
+
+        {/* CS-010: Moderation Queue section for Moderators / Admins */}
+        {currentUser &&
+          (currentUser.role === 'MODERATOR' || currentUser.role === 'ADMIN') &&
+          memberView === 'moderation' && (
+            <ModeratorQueue
+              reports={moderationReports}
+              auditLogs={moderationAuditLogs}
+              onModerateAction={handleModerateAction}
+            />
+          )}
 
         {/* CS-009: Public Campus Impact Dashboard */}
         <div className="w-full flex justify-center mb-8">
@@ -936,6 +1124,7 @@ export default function App(): React.JSX.Element {
             <div>• CS-007 Donor Request Inbox & 72h Handover Reservation</div>
             <div>• CS-008 Simplified Handover Completion + Dispute</div>
             <div>• CS-009 In-App Notifications + History</div>
+            <div>• CS-010 Reports + Moderator Tools</div>
           </div>
         </div>
 
@@ -976,6 +1165,13 @@ export default function App(): React.JSX.Element {
           selectedListing &&
           myRequests.some((r) => r?.listingId === selectedListing.id && r?.status === 'PENDING')
         )}
+        onReportListing={(listing) =>
+          handleOpenReportModal({
+            targetType: 'LISTING',
+            targetId: listing.id,
+            targetTitle: listing.title,
+          })
+        }
       />
 
       {/* Donor Request Inbox Modal (CS-007) */}
@@ -1001,6 +1197,17 @@ export default function App(): React.JSX.Element {
           setSelectedRequestForDispute(null);
         }}
         onSubmitDispute={handleSubmitDispute}
+      />
+
+      {/* Community Report Modal (CS-010) */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        target={reportTarget}
+        onClose={() => {
+          setIsReportModalOpen(false);
+          setReportTarget(null);
+        }}
+        onSubmitReport={handleSubmitReport}
       />
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
