@@ -6,3 +6,4 @@ export * from './request.contract';
 export * from './handover.contract';
 export * from './notification.contract';
 export * from './moderation.contract';
+export * from './partner.contract';
