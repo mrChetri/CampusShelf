@@ -74,6 +74,13 @@ export class CampusService {
     return campus && campus.active ? campus : null;
   }
 
+  public getCampusBySlug(slug: string): Campus | null {
+    const campus = Array.from(this.campuses.values()).find(
+      (c) => c.slug.toLowerCase() === slug.toLowerCase() && c.active
+    );
+    return campus || null;
+  }
+
   public redeemInviteCode(userId: string, input: RedeemInviteInput): RedeemInviteResponse {
     const campus = this.getCampusById(input.campusId);
     if (!campus) {
