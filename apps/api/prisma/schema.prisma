@@ -18,6 +18,7 @@ model User {
   requests           BookRequest[]
   donorHandovers     Handover[]    @relation("DonorHandovers")
   recipientHandovers Handover[]    @relation("RecipientHandovers")
+  notifications      Notification[]
   createdAt          DateTime      @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -135,4 +136,21 @@ model Handover {
   @@index([donorId])
   @@index([recipientId])
   @@map("handovers")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  entityId  String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, read])
+  @@map("notifications")
 }

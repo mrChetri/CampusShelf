@@ -90,6 +90,99 @@ describe('App Root Shell (Frontend Seam)', () => {
             }),
           });
         }
+        if (url.includes('/api/notifications/impact')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              impact: {
+                campusId: '550e8400-e29b-41d4-a716-446655440000',
+                campusName: 'Darrang College',
+                totalListed: 3,
+                totalReserved: 1,
+                totalDonated: 5,
+                totalMembers: 12,
+              },
+            }),
+          });
+        }
+        if (url.includes('/api/notifications/history')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              history: {
+                booksGiven: [
+                  {
+                    id: 'donated-book-1',
+                    donorId: '11111111-2222-3333-4444-555555555555',
+                    donorName: 'Aarav Sharma',
+                    campusId: '550e8400-e29b-41d4-a716-446655440000',
+                    campusName: 'Darrang College',
+                    title: 'Calculus Early Transcendentals',
+                    author: 'James Stewart',
+                    condition: 'GOOD',
+                    pickupLocation: 'Library',
+                    photos: ['https://example.com/calc.jpg'],
+                    status: 'DONATED',
+                    type: 'DONATION',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+                booksReceived: [
+                  {
+                    id: 'received-req-1',
+                    listingId: 'b1111111-2222-3333-4444-555555555551',
+                    listingTitle: 'University Physics',
+                    listingAuthor: 'Young and Freedman',
+                    pickupLocation: 'Central Library Entrance',
+                    campusName: 'Darrang College',
+                    donorId: 'd1111111-2222-3333-4444-555555555551',
+                    donorName: 'Priya Das',
+                    requesterId: '11111111-2222-3333-4444-555555555555',
+                    requesterName: 'Aarav Sharma',
+                    status: 'COMPLETED',
+                    message: null,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
+              },
+            }),
+          });
+        }
+        if (url.includes('/api/notifications/read-all')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, updatedCount: 1 }),
+          });
+        }
+        if (url.includes('/api/notifications/read')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, updatedCount: 1 }),
+          });
+        }
+        if (url.includes('/api/notifications')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              notifications: [
+                {
+                  id: 'notif-1',
+                  userId: '11111111-2222-3333-4444-555555555555',
+                  type: 'REQUEST_RECEIVED',
+                  title: 'New request for your book',
+                  body: 'Priya Das requested "University Physics".',
+                  entityId: 'req-1',
+                  read: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+              unreadCount: 1,
+            }),
+          });
+        }
         if (url.includes('/api/campuses/redeem-invite')) {
           let body: any = {};
           try {
@@ -933,5 +1026,85 @@ describe('App Root Shell (Frontend Seam)', () => {
     await waitFor(() => {
       expect(within(requestCard).getByText('DISPUTED')).toBeInTheDocument();
     });
+  });
+
+  it('renders public campus impact dashboard displaying listed, reserved, and donated counts (CS-009)', async () => {
+    render(<App />);
+
+    const impactPanel = await screen.findByTestId('campus-impact-panel');
+    expect(impactPanel).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('impact-total-listed')).toHaveTextContent('3');
+      expect(screen.getByTestId('impact-total-donated')).toHaveTextContent('5');
+      expect(screen.getByText(/12 verified campus members/i)).toBeInTheDocument();
+    });
+  });
+
+  it('renders notification bell for Campus Members and allows viewing and clearing notifications (CS-009)', async () => {
+    render(<App />);
+
+    // Sign in as Registered User
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    // Redeem invite to become Campus Member
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Notification bell should render with badge
+    const bell = await screen.findByTestId('notification-bell');
+    expect(bell).toBeInTheDocument();
+
+    const badge = await screen.findByTestId('notification-badge');
+    expect(badge).toHaveTextContent('1');
+
+    // Click bell to open dropdown
+    fireEvent.click(bell);
+    const dropdown = await screen.findByTestId('notification-dropdown');
+    expect(dropdown).toBeInTheDocument();
+    expect(within(dropdown).getByText(/New request for your book/i)).toBeInTheDocument();
+
+    // Click mark all as read
+    const markAllBtn = within(dropdown).getByTestId('mark-all-read-btn');
+    fireEvent.click(markAllBtn);
+
+    // Badge should be cleared
+    await waitFor(() => {
+      expect(screen.queryByTestId('notification-badge')).not.toBeInTheDocument();
+    });
+  });
+
+  it('allows Campus Members to navigate to History tab and view donation history (CS-009)', async () => {
+    render(<App />);
+
+    // Sign in as Registered User
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    // Redeem invite
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // History tab should be visible in member navigation tabs
+    const historyTab = await screen.findByTestId('tab-history');
+    expect(historyTab).toBeInTheDocument();
+
+    // Switch to History tab
+    fireEvent.click(historyTab);
+
+    // Donation History section should render with books given and received
+    const historySection = await screen.findByTestId('donation-history-section');
+    expect(historySection).toBeInTheDocument();
+
+    expect(await screen.findByTestId('donated-book-item')).toBeInTheDocument();
+    expect(screen.getByText(/Calculus Early Transcendentals/i)).toBeInTheDocument();
+
+    expect(await screen.findByTestId('received-book-item')).toBeInTheDocument();
+    expect(screen.getByText(/University Physics/i)).toBeInTheDocument();
   });
 });

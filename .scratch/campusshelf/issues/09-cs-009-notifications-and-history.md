@@ -4,9 +4,9 @@
 
 **Blocked by:** 08: CS-008 Simplified Handover Completion + Dispute
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] Prisma schema includes `Notification` model with read/unread tracking
-- [ ] Notifications triggered on: request submitted, request accepted/declined, handover completed, and reservation expired
-- [ ] User profile displays verified donation history (books given and books received)
-- [ ] Public campus impact dashboard displays verified handover count (distinguishing listed, reserved, and completed)
+- [x] Prisma schema includes `Notification` model with read/unread tracking
+- [x] Notifications triggered on: request submitted, request accepted/declined, handover completed, and reservation expired
+- [x] User profile displays verified donation history (books given and books received)
+- [x] Public campus impact dashboard displays verified handover count (distinguishing listed, reserved, and completed)

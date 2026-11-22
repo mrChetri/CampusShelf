@@ -3,6 +3,7 @@ import type { BookRequest, CreateBookRequestInput } from './request.schema';
 import { listingService } from '../listing/listing.service';
 import { campusService } from '../campus/campus.service';
 import { handoverService } from '../handover/handover.service';
+import { notificationService } from '../notification/notification.service';
 
 export class RequestService {
   private requests: BookRequest[] = [];
@@ -70,6 +71,16 @@ export class RequestService {
     };
 
     this.requests.unshift(newRequest);
+
+    // Notify donor: a new request was received for their listing
+    notificationService.createNotification({
+      userId: listing.donorId,
+      type: 'REQUEST_RECEIVED',
+      title: 'New request for your book',
+      body: `${requester.fullName} has requested "${listing.title}".`,
+      entityId: newRequest.id,
+    });
+
     return newRequest;
   }
 
@@ -180,6 +191,14 @@ export class RequestService {
         r.status = 'DECLINED';
         r.declineReason = 'Another request was accepted for this book';
         r.updatedAt = now;
+        // Notify declined requesters
+        notificationService.createNotification({
+          userId: r.requesterId,
+          type: 'REQUEST_DECLINED',
+          title: 'Your request was not accepted',
+          body: `Your request for "${listing.title}" was not selected. The book has been reserved for another student.`,
+          entityId: r.id,
+        });
       }
     }
 
@@ -196,6 +215,15 @@ export class RequestService {
       pickupLocation: listing.pickupLocation,
       scheduleNotes: request.message,
       reservedUntil,
+    });
+
+    // Notify accepted requester
+    notificationService.createNotification({
+      userId: request.requesterId,
+      type: 'REQUEST_ACCEPTED',
+      title: 'Your request was accepted! 🎉',
+      body: `Your request for "${listing.title}" was accepted. Coordinate pickup at ${listing.pickupLocation} within 72 hours.`,
+      entityId: request.id,
     });
 
     return {
@@ -243,6 +271,15 @@ export class RequestService {
     request.status = 'DECLINED';
     request.declineReason = reason ? reason.trim() : null;
     request.updatedAt = new Date().toISOString();
+
+    // Notify the requester that their request was declined
+    notificationService.createNotification({
+      userId: request.requesterId,
+      type: 'REQUEST_DECLINED',
+      title: 'Your request was declined',
+      body: `Your request for "${request.listingTitle}" was declined.${reason ? ` Reason: ${reason.trim()}` : ''}`,
+      entityId: request.id,
+    });
 
     return request;
   }
