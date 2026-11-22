@@ -7,6 +7,7 @@ import { campusRoutes } from './modules/campus/campus.routes';
 import { listingRoutes } from './modules/listing/listing.routes';
 import { requestRoutes } from './modules/request/request.routes';
 import { handoverRoutes } from './modules/handover/handover.routes';
+import { notificationRoutes } from './modules/notification/notification.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -37,6 +38,10 @@ export function createApp(): Express {
   // Mount handover endpoints (CS-008)
   app.use('/handovers', handoverRoutes);
   app.use('/api/handovers', handoverRoutes);
+
+  // Mount notification endpoints (CS-009)
+  app.use('/notifications', notificationRoutes);
+  app.use('/api/notifications', notificationRoutes);
 
   return app;
 }

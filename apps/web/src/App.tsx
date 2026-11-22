@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { HealthResponse, UserProfile, Campus, Listing, PublicListing, BookRequest } from '@campusshelf/contracts';
+import type { HealthResponse, UserProfile, Campus, Listing, PublicListing, BookRequest, Notification, CampusImpact } from '@campusshelf/contracts';
 import { DonateBookModal } from './components/DonateBookModal';
 import { MyListings } from './components/MyListings';
 import { BookDiscoveryFeed } from './components/BookDiscoveryFeed';
@@ -7,6 +7,9 @@ import { BookDetailModal } from './components/BookDetailModal';
 import { MyRequests } from './components/MyRequests';
 import { DonorRequestModal } from './components/DonorRequestModal';
 import { DisputeModal } from './components/DisputeModal';
+import { NotificationBell } from './components/NotificationBell';
+import { DonationHistory } from './components/DonationHistory';
+import { CampusImpactPanel } from './components/CampusImpact';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -36,7 +39,7 @@ export default function App(): React.JSX.Element {
 
   // CS-006: Request state & member navigation view
   const [myRequests, setMyRequests] = useState<BookRequest[]>([]);
-  const [memberView, setMemberView] = useState<'browse' | 'listings' | 'requests'>('browse');
+  const [memberView, setMemberView] = useState<'browse' | 'listings' | 'requests' | 'history'>('browse');
 
   // CS-007: Donor Request Inbox state
   const [selectedListingForRequests, setSelectedListingForRequests] = useState<Listing | null>(null);
@@ -47,6 +50,13 @@ export default function App(): React.JSX.Element {
   // CS-008: Handover & Dispute state
   const [selectedRequestForDispute, setSelectedRequestForDispute] = useState<BookRequest | null>(null);
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState<boolean>(false);
+
+  // CS-009: Notification & history state
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState<number>(0);
+  const [campusImpact, setCampusImpact] = useState<CampusImpact | null>(null);
+  const [historyBooksGiven, setHistoryBooksGiven] = useState<Listing[]>([]);
+  const [historyBooksReceived, setHistoryBooksReceived] = useState<BookRequest[]>([]);
 
   const getAuthToken = () => {
     if (!currentUser) return undefined;
@@ -76,6 +86,13 @@ export default function App(): React.JSX.Element {
       .catch(() => {
         // Fallback to default pilot campus
       });
+
+    fetch(`/api/notifications/impact/${PILOT_CAMPUS.id}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (data?.impact) setCampusImpact(data.impact);
+      })
+      .catch(() => {});
   }, []);
 
   // Fetch my listings when user becomes a Campus Member
@@ -111,9 +128,49 @@ export default function App(): React.JSX.Element {
         .catch(() => {
           // Keep existing local requests state
         });
+
+      // CS-009: Fetch notifications
+      fetch('/api/notifications', {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      })
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (data && Array.isArray(data.notifications)) {
+            setNotifications(data.notifications);
+            setNotificationUnreadCount(data.unreadCount ?? 0);
+          }
+        })
+        .catch(() => {});
+
+      // CS-009: Fetch donation history
+      fetch('/api/notifications/history', {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      })
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (data?.history) {
+            setHistoryBooksGiven(data.history.booksGiven ?? []);
+            setHistoryBooksReceived(data.history.booksReceived ?? []);
+          }
+        })
+        .catch(() => {});
+
+      // CS-009: Fetch campus impact
+      if (currentUser.campusId) {
+        fetch(`/api/notifications/impact/${currentUser.campusId}`)
+          .then((res) => (res.ok ? res.json() : Promise.reject()))
+          .then((data) => {
+            if (data?.impact) setCampusImpact(data.impact);
+          })
+          .catch(() => {});
+      }
     } else {
       setMyListings([]);
       setMyRequests([]);
+      setNotifications([]);
+      setNotificationUnreadCount(0);
+      setHistoryBooksGiven([]);
+      setHistoryBooksReceived([]);
     }
   }, [currentUser]);
 
@@ -544,6 +601,42 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  const handleMarkAllNotificationsRead = async () => {
+    const token = getAuthToken();
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setNotificationUnreadCount(0);
+    try {
+      await fetch('/api/notifications/read-all', {
+        method: 'PATCH',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+    } catch {
+      // Optimistic update retained
+    }
+  };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    const token = getAuthToken();
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+    setNotificationUnreadCount((prev) => Math.max(0, prev - 1));
+    try {
+      await fetch('/api/notifications/read', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ notificationIds: [id] }),
+      });
+    } catch {
+      // Optimistic update retained
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
@@ -576,6 +669,15 @@ export default function App(): React.JSX.Element {
                 <span>+</span>
                 <span>Donate a Book</span>
               </button>
+            )}
+
+            {currentUser && currentUser.role === 'CAMPUS_MEMBER' && (
+              <NotificationBell
+                notifications={notifications}
+                unreadCount={notificationUnreadCount}
+                onMarkAllRead={handleMarkAllNotificationsRead}
+                onMarkRead={handleMarkNotificationRead}
+              />
             )}
 
             {currentUser ? (
@@ -740,6 +842,17 @@ export default function App(): React.JSX.Element {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setMemberView('history')}
+              data-testid="tab-history"
+              className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
+                memberView === 'history'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>📜 History</span>
+            </button>
           </div>
         )}
 
@@ -763,6 +876,19 @@ export default function App(): React.JSX.Element {
             onReportProblem={handleOpenDisputeModal}
           />
         )}
+
+        {/* CS-009: Donation History section for Campus Members */}
+        {currentUser && currentUser.role === 'CAMPUS_MEMBER' && memberView === 'history' && (
+          <DonationHistory
+            booksGiven={historyBooksGiven}
+            booksReceived={historyBooksReceived}
+          />
+        )}
+
+        {/* CS-009: Public Campus Impact Dashboard */}
+        <div className="w-full flex justify-center mb-8">
+          <CampusImpactPanel impact={campusImpact} />
+        </div>
 
         <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-lg w-full mb-8">
           <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
@@ -809,6 +935,7 @@ export default function App(): React.JSX.Element {
             <div>• CS-006 Request Donated Book Flow</div>
             <div>• CS-007 Donor Request Inbox & 72h Handover Reservation</div>
             <div>• CS-008 Simplified Handover Completion + Dispute</div>
+            <div>• CS-009 In-App Notifications + History</div>
           </div>
         </div>
 

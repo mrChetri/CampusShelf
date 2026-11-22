@@ -28,6 +28,10 @@ export class UserService {
     return this.profiles.get(userId) ?? null;
   }
 
+  public getAllProfiles(): UserProfile[] {
+    return Array.from(this.profiles.values());
+  }
+
   public updateProfile(userId: string, updates: Partial<UserProfile>): UserProfile | null {
     const existing = this.profiles.get(userId);
     if (!existing) {

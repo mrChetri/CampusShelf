@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Handover, DisputeHandoverInput } from './handover.schema';
 import { listingService } from '../listing/listing.service';
 import { requestService } from '../request/request.service';
+import { notificationService } from '../notification/notification.service';
 
 export interface CreateHandoverParams {
   listingId: string;
@@ -125,6 +126,15 @@ export class HandoverService {
     listingService.completeListing(handover.listingId);
     requestService.completeRequest(handover.requestId);
 
+    // Notify recipient that the handover is confirmed
+    notificationService.createNotification({
+      userId: handover.recipientId,
+      type: 'HANDOVER_COMPLETED',
+      title: 'Handover completed! 📚',
+      body: `Your handover for "${handover.listingTitle}" has been confirmed by the donor. Enjoy the book!`,
+      entityId: handover.id,
+    });
+
     return {
       success: true,
       message: 'Handover marked as completed. Thank you for donating!',
@@ -166,6 +176,15 @@ export class HandoverService {
     // Atomically transition associated request to DISPUTED
     requestService.disputeRequest(handover.requestId);
 
+    // Notify donor that a dispute was raised
+    notificationService.createNotification({
+      userId: handover.donorId,
+      type: 'HANDOVER_DISPUTED',
+      title: 'A problem was reported on your handover',
+      body: `${handover.recipientName} has reported a problem with the handover of "${handover.listingTitle}". Reason: ${input.reason.trim()}`,
+      entityId: handover.id,
+    });
+
     return {
       success: true,
       message: 'Problem reported. Our campus moderation team has been notified.',
@@ -187,6 +206,15 @@ export class HandoverService {
 
         // Revert request to CANCELLED
         requestService.expireRequest(handover.requestId);
+
+        // Notify requester that their reservation expired
+        notificationService.createNotification({
+          userId: handover.recipientId,
+          type: 'RESERVATION_EXPIRED',
+          title: 'Your reservation has expired',
+          body: `Your reservation for "${handover.listingTitle}" has expired. The book is now available for others to request.`,
+          entityId: handover.id,
+        });
 
         revertedCount++;
       }
