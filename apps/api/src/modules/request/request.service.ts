@@ -103,6 +103,132 @@ export class RequestService {
     return request;
   }
 
+  public getListingRequests(listingId: string, donorId: string): BookRequest[] {
+    const listing = listingService.getListingById(listingId);
+    if (!listing) {
+      const err = new Error('Listing not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+
+    if (listing.donorId !== donorId) {
+      const err = new Error('Forbidden: you do not own this listing');
+      (err as any).statusCode = 403;
+      throw err;
+    }
+
+    return this.requests
+      .filter((r) => r.listingId === listingId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public acceptRequest(
+    requestId: string,
+    donorId: string
+  ): {
+    request: BookRequest;
+    listing: { id: string; status: string; reservedUntil: string };
+  } {
+    const request = this.requests.find((r) => r.id === requestId);
+    if (!request) {
+      const err = new Error('Request not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+
+    const listing = listingService.getListingById(request.listingId);
+    if (!listing) {
+      const err = new Error('Listing not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+
+    if (listing.donorId !== donorId) {
+      const err = new Error('Forbidden: you do not own this listing');
+      (err as any).statusCode = 403;
+      throw err;
+    }
+
+    if (listing.status !== 'AVAILABLE') {
+      const err = new Error('Listing is already reserved or unavailable');
+      (err as any).statusCode = 409;
+      throw err;
+    }
+
+    if (request.status !== 'PENDING') {
+      const err = new Error('Only pending requests can be accepted');
+      (err as any).statusCode = 400;
+      throw err;
+    }
+
+    const reservedUntil = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+    const now = new Date().toISOString();
+
+    // Atomically reserve the listing
+    listingService.reserveListing(listing.id, reservedUntil);
+
+    // Accept this request
+    request.status = 'ACCEPTED';
+    request.reservedUntil = reservedUntil;
+    request.updatedAt = now;
+
+    // Auto-decline competing pending requests for the same listing
+    for (const r of this.requests) {
+      if (r.listingId === listing.id && r.id !== requestId && r.status === 'PENDING') {
+        r.status = 'DECLINED';
+        r.declineReason = 'Another request was accepted for this book';
+        r.updatedAt = now;
+      }
+    }
+
+    return {
+      request,
+      listing: {
+        id: listing.id,
+        status: 'RESERVED',
+        reservedUntil,
+      },
+    };
+  }
+
+  public declineRequest(
+    requestId: string,
+    donorId: string,
+    reason?: string
+  ): BookRequest {
+    const request = this.requests.find((r) => r.id === requestId);
+    if (!request) {
+      const err = new Error('Request not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+
+    const listing = listingService.getListingById(request.listingId);
+    if (!listing) {
+      const err = new Error('Listing not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+
+    if (listing.donorId !== donorId) {
+      const err = new Error('Forbidden: you do not own this listing');
+      (err as any).statusCode = 403;
+      throw err;
+    }
+
+    if (request.status !== 'PENDING') {
+      const err = new Error('Only pending requests can be declined');
+      (err as any).statusCode = 400;
+      throw err;
+    }
+
+    request.status = 'DECLINED';
+    request.declineReason = reason ? reason.trim() : null;
+    request.updatedAt = new Date().toISOString();
+
+    return request;
+  }
+
   public resetForTesting(): void {
     this.requests = [];
   }

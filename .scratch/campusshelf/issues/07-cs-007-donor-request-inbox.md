@@ -4,9 +4,9 @@
 
 **Blocked by:** 06: CS-006 Request a Donated Book
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] `GET /listings/:id/requests` allows authenticated owner to view all incoming requests
-- [ ] `POST /requests/:id/accept` uses a database transaction to lock the listing as `RESERVED`, mark the request `ACCEPTED`, decline or notify competing requests, and start a 72-hour handover timer
-- [ ] Concurrency check ensures simultaneous accept calls cannot double-book a single physical copy
-- [ ] `POST /requests/:id/decline` allows donor to decline individual requests with status transition
+- [x] `GET /listings/:id/requests` allows authenticated owner to view all incoming requests
+- [x] `POST /requests/:id/accept` uses a database transaction to lock the listing as `RESERVED`, mark the request `ACCEPTED`, decline or notify competing requests, and start a 72-hour handover timer
+- [x] Concurrency check ensures simultaneous accept calls cannot double-book a single physical copy
+- [x] `POST /requests/:id/decline` allows donor to decline individual requests with status transition

@@ -60,6 +60,7 @@ export const ListingSchema = z.object({
   photos: z.array(z.string().url()),
   description: z.string().nullable().optional(),
   status: ListingStatusEnum.default('AVAILABLE'),
+  reservedUntil: z.string().datetime().nullable().optional(),
   type: ListingTypeEnum.default('DONATION'),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

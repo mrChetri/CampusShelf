@@ -147,6 +147,31 @@ export class ListingService {
     this.listings.set(listingId, updated);
     return updated;
   }
+
+  public reserveListing(listingId: string, reservedUntil: string): Listing {
+    const listing = this.listings.get(listingId);
+    if (!listing) {
+      const err: any = new Error('Listing not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (listing.status !== 'AVAILABLE') {
+      const err: any = new Error('Listing is already reserved or unavailable');
+      err.statusCode = 409;
+      throw err;
+    }
+
+    const updated: Listing = {
+      ...listing,
+      status: 'RESERVED',
+      reservedUntil,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.listings.set(listingId, updated);
+    return updated;
+  }
 }
 
 export const listingService = new ListingService();

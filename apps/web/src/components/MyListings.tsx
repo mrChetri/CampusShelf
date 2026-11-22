@@ -5,12 +5,14 @@ interface MyListingsProps {
   listings: Listing[];
   onWithdraw: (listingId: string) => void;
   onOpenDonateModal: () => void;
+  onViewRequests?: (listing: Listing) => void;
 }
 
 export const MyListings: React.FC<MyListingsProps> = ({
   listings,
   onWithdraw,
   onOpenDonateModal,
+  onViewRequests,
 }) => {
   if (listings.length === 0) {
     return (
@@ -76,6 +78,8 @@ export const MyListings: React.FC<MyListingsProps> = ({
                       className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                         isAvailable
                           ? 'bg-emerald-100 text-emerald-800'
+                          : listing.status === 'RESERVED'
+                          ? 'bg-purple-100 text-purple-800'
                           : 'bg-slate-200 text-slate-700'
                       }`}
                     >
@@ -100,7 +104,17 @@ export const MyListings: React.FC<MyListingsProps> = ({
                 </div>
               </div>
 
-              <div className="flex sm:flex-col items-center justify-end w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+              <div className="flex sm:flex-col items-center justify-end w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 gap-2">
+                {onViewRequests && (
+                  <button
+                    onClick={() => onViewRequests(listing)}
+                    data-testid={`view-requests-btn-${listing.id}`}
+                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-colors font-medium flex items-center space-x-1 w-full sm:w-auto justify-center"
+                  >
+                    <span>📬</span>
+                    <span>View Requests</span>
+                  </button>
+                )}
                 {isAvailable && (
                   <button
                     onClick={() => onWithdraw(listing.id)}
