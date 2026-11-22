@@ -15,13 +15,14 @@ export const ListingStatusEnum = z.enum([
   'RESERVED',
   'DONATED',
   'SOLD',
+  'EXCHANGED',
   'WITHDRAWN',
   'HIDDEN',
 ]);
 
 export type ListingStatus = z.infer<typeof ListingStatusEnum>;
 
-export const ListingTypeEnum = z.enum(['DONATION', 'SALE']);
+export const ListingTypeEnum = z.enum(['DONATION', 'SALE', 'EXCHANGE']);
 
 export type ListingType = z.infer<typeof ListingTypeEnum>;
 
@@ -49,6 +50,7 @@ export const CreateListingInputSchema = z
       .max(5000, 'Asking price must not exceed ₹5,000 for student affordability')
       .optional()
       .nullable(),
+    exchangePreferences: z.string().trim().max(500).optional(),
     campaignNeedId: z.string().uuid().nullable().optional(),
   })
   .refine(
@@ -87,6 +89,7 @@ export const ListingSchema = z.object({
   reservedUntil: z.string().datetime().nullable().optional(),
   type: ListingTypeEnum.default('DONATION'),
   price: z.number().int().nullable().optional(),
+  exchangePreferences: z.string().nullable().optional(),
   campaignNeedId: z.string().uuid().nullable().optional(),
   campaignTitle: z.string().nullable().optional(),
   partnerName: z.string().nullable().optional(),

@@ -181,4 +181,48 @@ describe('DonateBookModal Component (CS-004 & CS-011)', () => {
       expect(handleClose).toHaveBeenCalledOnce();
     });
   });
+
+  it('switches to Exchange (Barter) mode and submits exchangePreferences (CS-016)', async () => {
+    const handleClose = vi.fn();
+    const handleSuccess = vi.fn();
+    render(<DonateBookModal isOpen={true} onClose={handleClose} onSuccess={handleSuccess} />);
+
+    // Click Exchange mode button
+    const exchangeBtn = screen.getByTestId('listing-type-exchange-btn');
+    expect(exchangeBtn).toBeInTheDocument();
+    fireEvent.click(exchangeBtn);
+
+    // Exchange preferences input should now be displayed
+    const prefInput = screen.getByTestId('input-exchange-preferences');
+    expect(prefInput).toBeInTheDocument();
+    fireEvent.change(prefInput, { target: { value: 'Looking for Organic Chemistry 2nd Sem' } });
+
+    // Asking price should not be present
+    expect(screen.queryByTestId('input-price')).not.toBeInTheDocument();
+
+    // Fill in required fields
+    fireEvent.change(screen.getByTestId('input-title'), { target: { value: 'Inorganic Chemistry' } });
+    fireEvent.change(screen.getByTestId('input-author'), { target: { value: 'J.D. Lee' } });
+    fireEvent.change(screen.getByTestId('input-subject'), { target: { value: 'Chemistry' } });
+
+    // Add photo
+    const photoInput = screen.getByTestId('input-photo-url');
+    const addPhotoBtn = screen.getByTestId('add-photo-btn');
+    fireEvent.change(photoInput, { target: { value: 'https://example.com/jdlee.jpg' } });
+    fireEvent.click(addPhotoBtn);
+
+    // Submit
+    fireEvent.click(screen.getByTestId('submit-listing-btn'));
+
+    await waitFor(() => {
+      expect(handleSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'EXCHANGE',
+          exchangePreferences: 'Looking for Organic Chemistry 2nd Sem',
+          title: 'Inorganic Chemistry',
+        })
+      );
+      expect(handleClose).toHaveBeenCalledOnce();
+    });
+  });
 });

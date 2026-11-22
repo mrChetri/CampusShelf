@@ -146,4 +146,59 @@ describe('BookDiscoveryFeed Component', () => {
     fireEvent.change(filterType, { target: { value: 'SALE' } });
     expect(filterType).toHaveValue('SALE');
   });
+
+  it('renders exchange listings with barter badge and exchange filter (CS-016)', async () => {
+    const exchangeListing: PublicListing = {
+      id: 'exchange-card-1',
+      donorId: 'u3333333-0000-0000-0000-000000000003',
+      donorName: 'Devi Sarma',
+      campusId: '550e8400-e29b-41d4-a716-446655440000',
+      campusName: 'Darrang College',
+      title: 'Introduction to Algorithms (CLRS)',
+      author: 'Cormen et al.',
+      subject: 'Computer Science',
+      condition: 'LIKE_NEW',
+      pickupLocation: 'CS Department Foyer',
+      photos: ['https://example.com/clrs.jpg'],
+      status: 'AVAILABLE',
+      type: 'EXCHANGE',
+      exchangePreferences: 'Seeking Operating Systems 10th Ed',
+      createdAt: '2026-11-20T10:00:00.000Z',
+      updatedAt: '2026-11-20T10:00:00.000Z',
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((_url: string) => {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            listings: [exchangeListing],
+            total: 1,
+            page: 1,
+            limit: 12,
+            hasMore: false,
+          }),
+        });
+      })
+    );
+
+    render(
+      <BookDiscoveryFeed
+        campuses={mockCampuses}
+        onSelectListing={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Introduction to Algorithms (CLRS)')).toBeInTheDocument();
+      expect(screen.getByTestId('badge-exchange')).toBeInTheDocument();
+      expect(screen.getByText(/BOOK EXCHANGE/i)).toBeInTheDocument();
+      expect(screen.getByTestId('card-exchange')).toHaveTextContent(/Open to Barter/i);
+    });
+
+    const filterType = screen.getByTestId('filter-type');
+    fireEvent.change(filterType, { target: { value: 'EXCHANGE' } });
+    expect(filterType).toHaveValue('EXCHANGE');
+  });
 });

@@ -70,17 +70,42 @@ const mockListings = [
     createdAt: '2026-11-18T10:00:00.000Z',
     updatedAt: '2026-11-18T10:00:00.000Z',
   },
+  {
+    id: 'b1111111-2222-3333-4444-555555555554',
+    donorId: 'd1111111-2222-3333-4444-555555555554',
+    donorName: 'Barter Peer',
+    campusId: '550e8400-e29b-41d4-a716-446655440000',
+    campusName: 'Darrang College',
+    title: 'Operating System Concepts',
+    author: 'Silberschatz',
+    isbn: '9781118063330',
+    edition: '9th',
+    course: 'B.Tech CSE',
+    subject: 'Computer Science',
+    semester: '4th Semester',
+    condition: 'LIKE_NEW',
+    pickupLocation: 'CS Department Foyer',
+    photos: ['https://example.com/os.jpg'],
+    description: 'Great condition, looking for Calculus or DSA.',
+    status: 'AVAILABLE',
+    type: 'EXCHANGE',
+    exchangePreferences: 'Seeking Calculus Early Transcendentals',
+    createdAt: '2026-11-17T10:00:00.000Z',
+    updatedAt: '2026-11-17T10:00:00.000Z',
+  },
 ];
 
 let customMineRequests: any[] = [];
 let customReports: any[] = [];
 let customAuditLogs: any[] = [];
+let customExchanges: any[] = [];
 
 describe('App Root Shell (Frontend Seam)', () => {
   beforeEach(() => {
     customMineRequests = [];
     customReports = [];
     customAuditLogs = [];
+    customExchanges = [];
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string, options?: RequestInit) => {
@@ -254,6 +279,113 @@ describe('App Root Shell (Frontend Seam)', () => {
           return Promise.resolve({
             ok: true,
             json: async () => ({ requests: customMineRequests }),
+          });
+        }
+        if (url.includes('/api/exchanges/mine')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              incoming: customExchanges.filter((p) => p.targetOwnerId === '11111111-2222-3333-4444-555555555555'),
+              outgoing: customExchanges.filter((p) => p.proposerId === '11111111-2222-3333-4444-555555555555'),
+              proposals: customExchanges,
+            }),
+          });
+        }
+        if (options?.method === 'POST' && url.endsWith('/api/exchanges')) {
+          let body: any = {};
+          try {
+            body = options?.body ? JSON.parse(options.body as string) : {};
+          } catch {}
+          const newProposal = {
+            id: `prop-mock-${Date.now()}`,
+            targetListingId: body.targetListingId,
+            offeredListingId: body.offeredListingId,
+            proposerId: '11111111-2222-3333-4444-555555555555',
+            proposerName: 'Aarav Sharma',
+            targetOwnerId: 'd1111111-2222-3333-4444-555555555554',
+            targetOwnerName: 'Barter Peer',
+            status: 'PENDING',
+            message: body.message || null,
+            targetListingTitle: 'Operating System Concepts',
+            offeredListingTitle: 'Calculus Early Transcendentals',
+            reservedUntil: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          customExchanges.unshift(newProposal);
+          return Promise.resolve({
+            ok: true,
+            status: 201,
+            json: async () => ({ proposal: newProposal }),
+          });
+        }
+        if (url.includes('/api/exchanges/') && url.endsWith('/accept')) {
+          const propId = url.split('/api/exchanges/')[1]?.split('/accept')[0];
+          const found = customExchanges.find((p) => p.id === propId) || {
+            id: propId,
+            status: 'ACCEPTED',
+            targetListingTitle: 'Operating System Concepts',
+            offeredListingTitle: 'Calculus Early Transcendentals',
+            proposerName: 'Aarav Sharma',
+            targetOwnerName: 'Barter Peer',
+            createdAt: new Date().toISOString(),
+          };
+          found.status = 'ACCEPTED';
+          found.reservedUntil = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ proposal: found }),
+          });
+        }
+        if (url.includes('/api/exchanges/') && url.endsWith('/decline')) {
+          const propId = url.split('/api/exchanges/')[1]?.split('/decline')[0];
+          const found = customExchanges.find((p) => p.id === propId) || {
+            id: propId,
+            status: 'DECLINED',
+            targetListingTitle: 'Operating System Concepts',
+            offeredListingTitle: 'Calculus Early Transcendentals',
+            proposerName: 'Aarav Sharma',
+            targetOwnerName: 'Barter Peer',
+            createdAt: new Date().toISOString(),
+          };
+          found.status = 'DECLINED';
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ proposal: found }),
+          });
+        }
+        if (url.includes('/api/exchanges/') && url.endsWith('/complete')) {
+          const propId = url.split('/api/exchanges/')[1]?.split('/complete')[0];
+          const found = customExchanges.find((p) => p.id === propId) || {
+            id: propId,
+            status: 'COMPLETED',
+            targetListingTitle: 'Operating System Concepts',
+            offeredListingTitle: 'Calculus Early Transcendentals',
+            proposerName: 'Aarav Sharma',
+            targetOwnerName: 'Barter Peer',
+            createdAt: new Date().toISOString(),
+          };
+          found.status = 'COMPLETED';
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ proposal: found }),
+          });
+        }
+        if (url.includes('/api/exchanges/') && url.endsWith('/cancel')) {
+          const propId = url.split('/api/exchanges/')[1]?.split('/cancel')[0];
+          const found = customExchanges.find((p) => p.id === propId) || {
+            id: propId,
+            status: 'CANCELLED',
+            targetListingTitle: 'Operating System Concepts',
+            offeredListingTitle: 'Calculus Early Transcendentals',
+            proposerName: 'Aarav Sharma',
+            targetOwnerName: 'Barter Peer',
+            createdAt: new Date().toISOString(),
+          };
+          found.status = 'CANCELLED';
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ proposal: found }),
           });
         }
         if ((!options?.method || options?.method === 'GET') && (url.includes('/api/requests/for-listing/') || (url.includes('/api/listings/') && url.endsWith('/requests')))) {
@@ -1665,5 +1797,82 @@ describe('App Root Shell (Frontend Seam)', () => {
     expect(screen.getByTestId('drive-share-card')).toBeInTheDocument();
     expect(screen.getByTestId('qr-code-svg')).toBeInTheDocument();
     expect(screen.getByTestId('drive-privacy-guardrail')).toBeInTheDocument();
+  });
+
+  it('navigates to Book Exchanges tab, proposes a new barter exchange, and views active offers (CS-016)', async () => {
+    render(<App />);
+
+    // Authenticate as campus member
+    const signInBtn = screen.getByRole('button', { name: /sign in with google/i });
+    fireEvent.click(signInBtn);
+
+    const inviteInput = screen.getByTestId('invite-code-input');
+    fireEvent.change(inviteInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(screen.getByTestId('join-campus-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('member-nav-tabs')).toBeInTheDocument();
+    });
+
+    // Verify tab-exchanges exists
+    const exchangesTab = screen.getByTestId('tab-exchanges');
+    expect(exchangesTab).toBeInTheDocument();
+
+    // First list an available book so we can offer it in trade
+    fireEvent.click(screen.getByTestId('tab-listings'));
+    const createListingBtn = await screen.findByTestId('open-donate-modal-btn');
+    fireEvent.click(createListingBtn);
+
+    // List a book in exchange mode
+    fireEvent.click(screen.getByTestId('listing-type-exchange-btn'));
+    fireEvent.change(screen.getByTestId('input-title'), { target: { value: 'Calculus Early Transcendentals' } });
+    fireEvent.change(screen.getByTestId('input-author'), { target: { value: 'James Stewart' } });
+    fireEvent.change(screen.getByTestId('input-subject'), { target: { value: 'Mathematics' } });
+    fireEvent.change(screen.getByTestId('input-exchange-preferences'), { target: { value: 'Seeking Operating Systems' } });
+
+    const photoInput = screen.getByTestId('input-photo-url');
+    fireEvent.change(photoInput, { target: { value: 'https://example.com/calc.jpg' } });
+    fireEvent.click(screen.getByTestId('add-photo-btn'));
+    fireEvent.click(screen.getByTestId('submit-listing-btn'));
+
+    // Wait for listing to be created
+    await waitFor(() => {
+      expect(screen.queryByTestId('donate-book-modal')).not.toBeInTheDocument();
+    });
+
+    // Switch to Browse tab and find the exchange book
+    fireEvent.click(screen.getByTestId('tab-browse'));
+    const exchangeCard = await screen.findByTestId('book-card-b1111111-2222-3333-4444-555555555554');
+    expect(exchangeCard).toBeInTheDocument();
+    fireEvent.click(exchangeCard);
+
+    // Verify BookDetailModal opens with barter details
+    expect(await screen.findByTestId('book-detail-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('badge-exchange')).toBeInTheDocument();
+    expect(screen.getByTestId('exchange-preferences-banner')).toBeInTheDocument();
+
+    // Click "Propose Book Exchange"
+    const proposeBtn = screen.getByTestId('open-exchange-proposal-btn');
+    fireEvent.click(proposeBtn);
+
+    // Verify ExchangeProposalModal opens
+    expect(await screen.findByTestId('exchange-proposal-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('target-book-summary')).toHaveTextContent('Operating System Concepts');
+
+    // Select our offered book
+    const selectOffered = screen.getByTestId('select-offered-listing');
+    fireEvent.change(selectOffered, { target: { value: selectOffered.children[1].getAttribute('value') || 'new-listing-id-1234' } });
+
+    // Enter note
+    fireEvent.change(screen.getByTestId('exchange-message-input'), {
+      target: { value: 'Let us meet in the CS department foyer to exchange textbooks!' },
+    });
+
+    // Submit proposal
+    fireEvent.click(screen.getByTestId('submit-exchange-btn'));
+
+    // Verify redirected to exchanges view with our proposal
+    expect(await screen.findByTestId('my-exchanges-view')).toBeInTheDocument();
+    expect(screen.getByText('Operating System Concepts')).toBeInTheDocument();
   });
 });

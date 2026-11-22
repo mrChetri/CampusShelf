@@ -53,6 +53,7 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
   const [condition, setCondition] = useState<ListingCondition>('GOOD');
   const [listingType, setListingType] = useState<ListingType>('DONATION');
   const [price, setPrice] = useState<string>('');
+  const [exchangePreferences, setExchangePreferences] = useState('');
   const [selectedZone, setSelectedZone] = useState(SAFE_PICKUP_ZONES[0]);
   const [pickupLocation, setPickupLocation] = useState(SAFE_PICKUP_ZONES[0]);
   const [description, setDescription] = useState('');
@@ -167,6 +168,7 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
       description: description.trim() || undefined,
       type: listingType,
       price: parsedPrice,
+      exchangePreferences: listingType === 'EXCHANGE' ? (exchangePreferences.trim() || undefined) : undefined,
       campaignNeedId: initialCampaignNeedId || undefined,
     };
 
@@ -207,6 +209,7 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
           status: 'AVAILABLE',
           type: payload.type,
           price: payload.price ?? null,
+          exchangePreferences: payload.exchangePreferences ?? null,
           campaignNeedId: initialCampaignNeedId ?? null,
           campaignTitle: initialCampaignTitle ?? null,
           partnerName: initialPartnerName ?? null,
@@ -241,6 +244,7 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
         status: 'AVAILABLE',
         type: payload.type,
         price: payload.price ?? null,
+        exchangePreferences: payload.exchangePreferences ?? null,
         campaignNeedId: initialCampaignNeedId ?? null,
         campaignTitle: initialCampaignTitle ?? null,
         partnerName: initialPartnerName ?? null,
@@ -262,9 +266,15 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 text-left relative max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
           <div className="flex items-center space-x-2">
-            <span className="text-xl">{listingType === 'SALE' ? '🏷️' : '📖'}</span>
+            <span className="text-xl">
+              {listingType === 'SALE' ? '🏷️' : listingType === 'EXCHANGE' ? '🔄' : '📖'}
+            </span>
             <h3 className="font-bold text-lg text-slate-800">
-              {listingType === 'SALE' ? 'List Book for Sale' : 'Donate a Book'}
+              {listingType === 'SALE'
+                ? 'List Book for Sale'
+                : listingType === 'EXCHANGE'
+                ? 'List Book for Exchange'
+                : 'Donate a Book'}
             </h3>
           </div>
           <button
@@ -315,7 +325,7 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
           {/* Listing Type Toggle */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">Listing Mode *</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 data-testid="listing-type-donation-btn"
@@ -330,7 +340,23 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
                 }`}
               >
                 <span>🎁</span>
-                <span>Free Donation (Default)</span>
+                <span>Free Donation</span>
+              </button>
+              <button
+                type="button"
+                data-testid="listing-type-exchange-btn"
+                onClick={() => {
+                  setListingType('EXCHANGE');
+                  setPrice('');
+                }}
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all ${
+                  listingType === 'EXCHANGE'
+                    ? 'bg-sky-50 border-sky-500 text-sky-800 ring-2 ring-sky-400/40 shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span>🔄</span>
+                <span>Book Exchange</span>
               </button>
               <button
                 type="button"
@@ -347,6 +373,29 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Exchange Preferences Input for EXCHANGE */}
+          {listingType === 'EXCHANGE' && (
+            <div className="bg-sky-50/80 border border-sky-200 rounded-xl p-3.5 space-y-2">
+              <div>
+                <label className="block font-semibold text-sky-950 mb-1">
+                  Exchange / Barter Preferences (Optional)
+                </label>
+                <input
+                  type="text"
+                  maxLength={200}
+                  data-testid="input-exchange-preferences"
+                  placeholder="e.g. Seeking B.Sc Semester 2 Chemistry or Calculus"
+                  value={exchangePreferences}
+                  onChange={(e) => setExchangePreferences(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-white border border-sky-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none text-slate-900 font-medium"
+                />
+              </div>
+              <p className="text-[11px] text-sky-800 leading-relaxed">
+                🔄 Peer-to-peer textbook barter on campus grounds. Zero payments or fees. Exchange textbook for textbook with a verified classmate.
+              </p>
+            </div>
+          )}
 
           {/* Asking Price Input for SALE */}
           {listingType === 'SALE' && (

@@ -19,6 +19,7 @@ import type {
   CreateCampaignNeedInput,
   UpdateCampaignNeedInput,
   BookDriveSummary,
+  ExchangeProposal,
 } from '@campusshelf/contracts';
 import { DonateBookModal } from './components/DonateBookModal';
 import { MyListings } from './components/MyListings';
@@ -35,6 +36,8 @@ import { ModeratorQueue } from './components/ModeratorQueue';
 import { PartnerDirectory } from './components/PartnerDirectory';
 import { CampaignNeedsView } from './components/CampaignNeedsView';
 import { BookDriveView } from './components/BookDriveView';
+import { ExchangeProposalModal } from './components/ExchangeProposalModal';
+import { MyExchanges } from './components/MyExchanges';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -64,9 +67,14 @@ export default function App(): React.JSX.Element {
 
   // CS-006: Request state & member navigation view
   const [myRequests, setMyRequests] = useState<BookRequest[]>([]);
-  const [memberView, setMemberView] = useState<'browse' | 'campaigns' | 'drive' | 'partners' | 'listings' | 'requests' | 'history' | 'moderation'>('browse');
+  const [memberView, setMemberView] = useState<'browse' | 'campaigns' | 'drive' | 'partners' | 'listings' | 'requests' | 'exchanges' | 'history' | 'moderation'>('browse');
   const [partners, setPartners] = useState<PartnerOrganization[]>([]);
   const [allAdminPartners, setAllAdminPartners] = useState<PartnerOrganization[]>([]);
+
+  // CS-016: Book exchange offers state
+  const [exchanges, setExchanges] = useState<ExchangeProposal[]>([]);
+  const [isExchangeProposalModalOpen, setIsExchangeProposalModalOpen] = useState<boolean>(false);
+  const [exchangeTargetListing, setExchangeTargetListing] = useState<PublicListing | null>(null);
 
   // CS-014: Campaign book needs state
   const [campaignNeeds, setCampaignNeeds] = useState<CampaignNeed[]>([]);
@@ -208,6 +216,23 @@ export default function App(): React.JSX.Element {
           // Keep existing local requests state
         });
 
+      // CS-016: Fetch exchange proposals
+      fetch('/api/exchanges/mine', {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          if (data) {
+            const list = Array.isArray(data.proposals)
+              ? data.proposals
+              : [...(data.incoming ?? []), ...(data.outgoing ?? [])];
+            setExchanges(list);
+          }
+        })
+        .catch(() => {});
+
       // CS-009: Fetch notifications
       fetch('/api/notifications', {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -290,6 +315,7 @@ export default function App(): React.JSX.Element {
       setModerationReports([]);
       setModerationAuditLogs([]);
       setAllAdminPartners([]);
+      setExchanges([]);
     }
   }, [currentUser]);
 
@@ -315,6 +341,7 @@ export default function App(): React.JSX.Element {
     setOnboardingError(null);
     setMyListings([]);
     setMyRequests([]);
+    setExchanges([]);
     setMemberView('browse');
     setIsDonateModalOpen(false);
   };
@@ -978,6 +1005,142 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  // CS-016: Book exchange offers handlers
+  const handleOpenProposeExchange = (listing: PublicListing) => {
+    setExchangeTargetListing(listing);
+    setIsExchangeProposalModalOpen(true);
+    setIsDetailModalOpen(false);
+  };
+
+  const handleSubmitExchangeProposal = async (
+    targetListingId: string,
+    offeredListingId: string,
+    message?: string
+  ) => {
+    const token = getAuthToken();
+    const res = await fetch('/api/exchanges', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ targetListingId, offeredListingId, message }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to submit exchange proposal');
+    }
+
+    const data = await res.json();
+    if (data?.proposal) {
+      setExchanges((prev) => [data.proposal, ...prev]);
+      setMemberView('exchanges');
+    }
+  };
+
+  const handleAcceptExchange = async (proposalId: string) => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/exchanges/${proposalId}/accept`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to accept exchange proposal');
+    }
+
+    const data = await res.json();
+    if (data?.proposal) {
+      setExchanges((prev) =>
+        prev.map((p) => (p.id === proposalId ? data.proposal : p))
+      );
+      setMyListings((prev) =>
+        prev.map((l) =>
+          l.id === data.proposal.targetListingId || l.id === data.proposal.offeredListingId
+            ? { ...l, status: 'RESERVED' }
+            : l
+        )
+      );
+    }
+  };
+
+  const handleDeclineExchange = async (proposalId: string) => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/exchanges/${proposalId}/decline`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to decline exchange proposal');
+    }
+
+    const data = await res.json();
+    if (data?.proposal) {
+      setExchanges((prev) =>
+        prev.map((p) => (p.id === proposalId ? data.proposal : p))
+      );
+    }
+  };
+
+  const handleCompleteExchange = async (proposalId: string) => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/exchanges/${proposalId}/complete`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to complete exchange');
+    }
+
+    const data = await res.json();
+    if (data?.proposal) {
+      setExchanges((prev) =>
+        prev.map((p) => (p.id === proposalId ? data.proposal : p))
+      );
+      setMyListings((prev) =>
+        prev.map((l) =>
+          l.id === data.proposal.targetListingId || l.id === data.proposal.offeredListingId
+            ? { ...l, status: 'EXCHANGED' }
+            : l
+        )
+      );
+    }
+  };
+
+  const handleCancelExchange = async (proposalId: string) => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/exchanges/${proposalId}/cancel`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to cancel exchange');
+    }
+
+    const data = await res.json();
+    if (data?.proposal) {
+      setExchanges((prev) =>
+        prev.map((p) => (p.id === proposalId ? data.proposal : p))
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
@@ -1256,6 +1419,22 @@ export default function App(): React.JSX.Element {
               )}
             </button>
             <button
+              onClick={() => setMemberView('exchanges')}
+              data-testid="tab-exchanges"
+              className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
+                memberView === 'exchanges'
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>🔄 Book Exchanges</span>
+              {exchanges.filter((e) => e.status === 'PENDING' || e.status === 'ACCEPTED').length > 0 && (
+                <span className="bg-sky-100 text-sky-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {exchanges.filter((e) => e.status === 'PENDING' || e.status === 'ACCEPTED').length}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setMemberView('history')}
               data-testid="tab-history"
               className={`text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center space-x-1.5 ${
@@ -1313,6 +1492,23 @@ export default function App(): React.JSX.Element {
               onCancelRequest={handleCancelRequest}
               onBrowseBooks={() => setMemberView('browse')}
               onReportProblem={handleOpenDisputeModal}
+            />
+          )}
+
+        {/* CS-016: Book Exchange Offers (Barter) */}
+        {currentUser &&
+          (currentUser.role === 'CAMPUS_MEMBER' ||
+            currentUser.role === 'MODERATOR' ||
+            currentUser.role === 'ADMIN') &&
+          memberView === 'exchanges' && (
+            <MyExchanges
+              proposals={exchanges}
+              currentUserId={currentUser?.id}
+              onAccept={handleAcceptExchange}
+              onDecline={handleDeclineExchange}
+              onComplete={handleCompleteExchange}
+              onCancel={handleCancelExchange}
+              onBrowseBooks={() => setMemberView('browse')}
             />
           )}
 
@@ -1429,6 +1625,7 @@ export default function App(): React.JSX.Element {
             <div>• CS-013 Verified Partner Directory</div>
             <div>• CS-014 NGO Book Needs / Campaign</div>
             <div>• CS-015 Semester Book Drive + Share Links</div>
+            <div>• CS-016 Book Exchange Offers</div>
           </div>
         </div>
 
@@ -1465,7 +1662,7 @@ export default function App(): React.JSX.Element {
         initialCourse={selectedCampaignForDonation?.course || undefined}
       />
 
-      {/* Book Detail Modal (CS-005 & CS-006) */}
+      {/* Book Detail Modal (CS-005 & CS-006 & CS-016) */}
       <BookDetailModal
         isOpen={isDetailModalOpen}
         listing={selectedListing}
@@ -1487,6 +1684,20 @@ export default function App(): React.JSX.Element {
             targetTitle: listing.title,
           })
         }
+        onProposeExchange={handleOpenProposeExchange}
+      />
+
+      {/* Book Exchange Proposal Modal (CS-016) */}
+      <ExchangeProposalModal
+        isOpen={isExchangeProposalModalOpen}
+        targetListing={exchangeTargetListing}
+        myAvailableListings={myListings.filter((l) => l.status === 'AVAILABLE')}
+        onClose={() => {
+          setIsExchangeProposalModalOpen(false);
+          setExchangeTargetListing(null);
+        }}
+        onSubmitProposal={handleSubmitExchangeProposal}
+        onOpenDonateModal={() => setIsDonateModalOpen(true)}
       />
 
       {/* Donor Request Inbox Modal (CS-007) */}

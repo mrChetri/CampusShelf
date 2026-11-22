@@ -9,3 +9,4 @@ export * from './moderation.contract';
 export * from './partner.contract';
 export * from './campaign.contract';
 export * from './book-drive.contract';
+export * from './exchange.contract';

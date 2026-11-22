@@ -10,6 +10,7 @@ interface BookDetailModalProps {
   onRequestListing?: (listingId: string, message?: string) => Promise<boolean | void>;
   hasActiveRequest?: boolean;
   onReportListing?: (listing: PublicListing) => void;
+  onProposeExchange?: (listing: PublicListing) => void;
 }
 
 const CONDITION_GUIDE: Record<string, string> = {
@@ -29,6 +30,7 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
   onRequestListing,
   hasActiveRequest = false,
   onReportListing,
+  onProposeExchange,
 }) => {
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
   const [isRequesting, setIsRequesting] = useState<boolean>(false);
@@ -79,6 +81,13 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                   className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider"
                 >
                   🎁 Free Donation
+                </span>
+              ) : listing.type === 'EXCHANGE' ? (
+                <span
+                  data-testid="badge-exchange"
+                  className="bg-sky-100 text-sky-800 text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"
+                >
+                  <span>🔄 Book Exchange</span>
                 </span>
               ) : (
                 <span
@@ -140,6 +149,28 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Book Exchange Banner (CS-016) */}
+          {listing.type === 'EXCHANGE' && (
+            <div
+              data-testid="exchange-preferences-banner"
+              className="bg-sky-50 border border-sky-200 rounded-xl p-3.5 text-xs text-sky-950 flex items-start justify-between"
+            >
+              <div>
+                <span className="font-bold text-sky-900 block text-xs">
+                  🔄 Textbook Barter / Exchange
+                </span>
+                <span className="text-[11px] text-sky-800">
+                  {listing.exchangePreferences
+                    ? `Seeking in return: "${listing.exchangePreferences}"`
+                    : 'Open to barter for relevant course textbooks. Zero fees or cash exchange.'}
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-sky-200 text-sky-900 font-semibold text-[10px]">
+                Peer Barter
+              </span>
             </div>
           )}
 
@@ -359,7 +390,15 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
               <span>{isSale ? 'Enquiry Sent (Pending)' : 'Requested (Pending)'}</span>
             </span>
           ) : isCampusMember ? (
-            !isRequesting && (
+            listing.type === 'EXCHANGE' ? (
+              <button
+                onClick={() => onProposeExchange?.(listing)}
+                data-testid="open-exchange-proposal-btn"
+                className="bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow flex items-center space-x-1.5 transition-colors"
+              >
+                <span>🔄 Propose Book Exchange</span>
+              </button>
+            ) : !isRequesting && (
               <button
                 onClick={() => setIsRequesting(true)}
                 data-testid="open-request-form-btn"
