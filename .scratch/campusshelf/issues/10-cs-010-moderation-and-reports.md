@@ -4,10 +4,10 @@
 
 **Blocked by:** 05: CS-005 Donation-First Browse + Detail
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] Prisma schema includes `Report` and `AuditEvent` models
-- [ ] Authenticated members can submit a report on any listing or user with standard violation categories
-- [ ] Moderator role-guarded endpoints (`/admin/reports`, `/admin/moderate`) allow reviewing open reports
-- [ ] Moderators can hide listings or suspend users; actions are immutably logged in `AuditEvent`
-- [ ] Hidden listings are automatically excluded from public search and browse feeds
+- [x] Prisma schema includes `Report` and `AuditEvent` models
+- [x] Authenticated members can submit a report on any listing or user with standard violation categories
+- [x] Moderator role-guarded endpoints (`/admin/reports`, `/admin/moderate`) allow reviewing open reports
+- [x] Moderators can hide listings or suspend users; actions are immutably logged in `AuditEvent`
+- [x] Hidden listings are automatically excluded from public search and browse feeds

@@ -8,6 +8,7 @@ import { listingRoutes } from './modules/listing/listing.routes';
 import { requestRoutes } from './modules/request/request.routes';
 import { handoverRoutes } from './modules/handover/handover.routes';
 import { notificationRoutes } from './modules/notification/notification.routes';
+import { reportRoutes, adminRoutes } from './modules/moderation/moderation.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -42,6 +43,12 @@ export function createApp(): Express {
   // Mount notification endpoints (CS-009)
   app.use('/notifications', notificationRoutes);
   app.use('/api/notifications', notificationRoutes);
+
+  // Mount moderation & report endpoints (CS-010)
+  app.use('/reports', reportRoutes);
+  app.use('/api/reports', reportRoutes);
+  app.use('/admin', adminRoutes);
+  app.use('/api/admin', adminRoutes);
 
   return app;
 }

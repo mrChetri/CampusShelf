@@ -5,3 +5,4 @@ export * from './listing.contract';
 export * from './request.contract';
 export * from './handover.contract';
 export * from './notification.contract';
+export * from './moderation.contract';

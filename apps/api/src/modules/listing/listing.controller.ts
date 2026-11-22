@@ -50,6 +50,13 @@ export class ListingController {
       return;
     }
 
+    if (profile.status === 'SUSPENDED') {
+      res.status(403).json({
+        error: 'Forbidden: Account is suspended',
+      });
+      return;
+    }
+
     const parseResult = CreateListingInputSchema.safeParse(req.body);
     if (!parseResult.success) {
       res.status(400).json({
@@ -63,7 +70,8 @@ export class ListingController {
       const listing = listingService.createListing(profile, parseResult.data);
       res.status(201).json({ listing });
     } catch (err: any) {
-      res.status(400).json({ error: err.message || 'Failed to create listing' });
+      const statusCode = err.statusCode || 400;
+      res.status(statusCode).json({ error: err.message || 'Failed to create listing' });
     }
   }
 

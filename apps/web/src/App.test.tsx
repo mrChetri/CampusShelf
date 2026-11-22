@@ -72,10 +72,14 @@ const mockListings = [
 ];
 
 let customMineRequests: any[] = [];
+let customReports: any[] = [];
+let customAuditLogs: any[] = [];
 
 describe('App Root Shell (Frontend Seam)', () => {
   beforeEach(() => {
     customMineRequests = [];
+    customReports = [];
+    customAuditLogs = [];
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string, options?: RequestInit) => {
@@ -197,6 +201,23 @@ describe('App Root Shell (Frontend Seam)', () => {
                   email: 'student@darrang.edu',
                   fullName: 'Aarav Sharma',
                   role: 'CAMPUS_MEMBER',
+                  campusId: body.campusId || '550e8400-e29b-41d4-a716-446655440000',
+                  campusName: 'Darrang College',
+                  avatarUrl: null,
+                  createdAt: new Date().toISOString(),
+                },
+              }),
+            });
+          }
+          if (body.code === 'MODERATOR-INVITE-2026') {
+            return Promise.resolve({
+              ok: true,
+              json: async () => ({
+                user: {
+                  id: 'mod-11111111-2222-3333-4444-555555555555',
+                  email: 'mod@darrang.edu',
+                  fullName: 'Prof. Moderation',
+                  role: 'MODERATOR',
                   campusId: body.campusId || '550e8400-e29b-41d4-a716-446655440000',
                   campusName: 'Darrang College',
                   avatarUrl: null,
@@ -361,6 +382,81 @@ describe('App Root Shell (Frontend Seam)', () => {
                 updatedAt: new Date().toISOString(),
               },
             }),
+          });
+        }
+        if (url.includes('/api/admin/reports')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              reports: customReports,
+              total: customReports.length,
+            }),
+          });
+        }
+        if (url.includes('/api/admin/audit-logs')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              auditLogs: customAuditLogs,
+              total: customAuditLogs.length,
+            }),
+          });
+        }
+        if (options?.method === 'POST' && url.includes('/api/admin/moderate')) {
+          let body: any = {};
+          try {
+            body = options?.body ? JSON.parse(options.body as string) : {};
+          } catch {}
+          const newAudit = {
+            id: 'audit-new-1234',
+            action: body.action,
+            targetType: body.targetType,
+            targetId: body.targetId,
+            reason: body.reason,
+            performedById: 'mod-11111111-2222-3333-4444-555555555555',
+            performedByName: 'Prof. Moderation',
+            createdAt: new Date().toISOString(),
+          };
+          customAuditLogs.unshift(newAudit);
+          if (body.reportId) {
+            const rep = customReports.find((r) => r.id === body.reportId);
+            if (rep) {
+              rep.status = body.action === 'DISMISS_REPORT' ? 'DISMISSED' : 'RESOLVED';
+              rep.resolutionNotes = body.reason;
+            }
+          }
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              success: true,
+              auditEvent: newAudit,
+            }),
+          });
+        }
+        if (options?.method === 'POST' && url.includes('/api/reports')) {
+          let body: any = {};
+          try {
+            body = options?.body ? JSON.parse(options.body as string) : {};
+          } catch {}
+          const newReport = {
+            id: 'report-new-1234',
+            targetType: body.targetType || 'LISTING',
+            targetId: body.targetId || 'b1111111-2222-3333-4444-555555555551',
+            targetTitle: 'University Physics',
+            reporterId: '11111111-2222-3333-4444-555555555555',
+            reporterName: 'Aarav Sharma',
+            reason: body.reason || 'SPAM',
+            details: body.details || null,
+            status: 'PENDING',
+            resolutionNotes: null,
+            resolvedById: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          customReports.unshift(newReport);
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, report: newReport }),
           });
         }
         if (url.includes('/api/listings/mine')) {
@@ -1106,5 +1202,122 @@ describe('App Root Shell (Frontend Seam)', () => {
 
     expect(await screen.findByTestId('received-book-item')).toBeInTheDocument();
     expect(screen.getByText(/University Physics/i)).toBeInTheDocument();
+  });
+
+  it('allows Campus Members to report a listing via BookDetailModal and ReportModal (CS-010)', async () => {
+    render(<App />);
+
+    // Sign in as Registered User
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    // Redeem invite
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Click a book listing to open BookDetailModal
+    const bookTitle = await screen.findByText('University Physics');
+    fireEvent.click(bookTitle);
+
+    // Book detail modal should open
+    const detailModal = await screen.findByTestId('book-detail-modal');
+    expect(detailModal).toBeInTheDocument();
+
+    // Report button should be visible
+    const reportBtn = await screen.findByTestId('report-listing-btn');
+    expect(reportBtn).toBeInTheDocument();
+    fireEvent.click(reportBtn);
+
+    // Report modal should open
+    const reportModal = await screen.findByTestId('report-modal');
+    expect(reportModal).toBeInTheDocument();
+
+    // Fill in report details
+    const reasonSelect = screen.getByTestId('report-reason-select');
+    fireEvent.change(reasonSelect, { target: { value: 'COMMERCIAL_SALE' } });
+
+    const detailsInput = screen.getByTestId('report-details-input');
+    fireEvent.change(detailsInput, {
+      target: { value: 'Seller is asking for cash payment outside campus.' },
+    });
+
+    // Submit report
+    const submitReportBtn = screen.getByTestId('submit-report-btn');
+    fireEvent.click(submitReportBtn);
+
+    // Report modal should close
+    await waitFor(() => {
+      expect(screen.queryByTestId('report-modal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('allows Moderators to access Moderation tab, review open reports, hide listing, and view audit trail (CS-010)', async () => {
+    // Populate an open report in customReports
+    customReports = [
+      {
+        id: 'report-mod-test-1',
+        targetType: 'LISTING',
+        targetId: 'b1111111-2222-3333-4444-555555555551',
+        targetTitle: 'University Physics',
+        reporterId: '11111111-2222-3333-4444-555555555555',
+        reporterName: 'Priya Das',
+        reason: 'SPAM',
+        details: 'Duplicated spam listing',
+        status: 'PENDING',
+        resolutionNotes: null,
+        resolvedById: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    render(<App />);
+
+    // Sign in as Registered User
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    // Redeem invite as MODERATOR
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'MODERATOR-INVITE-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Moderator tab should be present in navigation
+    const modTab = await screen.findByTestId('tab-moderation');
+    expect(modTab).toBeInTheDocument();
+
+    // Click Moderator tab
+    fireEvent.click(modTab);
+
+    // ModeratorQueue component should be visible
+    const modQueue = await screen.findByTestId('moderator-queue');
+    expect(modQueue).toBeInTheDocument();
+
+    // Check report item is displayed
+    const reportItem = await screen.findByTestId('report-item');
+    expect(reportItem).toBeInTheDocument();
+    expect(within(reportItem).getByText('University Physics')).toBeInTheDocument();
+    expect(within(reportItem).getByText('PENDING')).toBeInTheDocument();
+
+    // Click Hide Listing action
+    const hideBtn = within(reportItem).getByTestId('hide-listing-btn');
+    fireEvent.click(hideBtn);
+
+    // Report status changes to RESOLVED
+    await waitFor(() => {
+      expect(screen.queryByTestId('hide-listing-btn')).not.toBeInTheDocument();
+    });
+
+    // Switch to Audit Trail tab
+    const auditTab = screen.getByTestId('tab-audit-logs');
+    fireEvent.click(auditTab);
+
+    // Audit logs section should be visible with the recorded event
+    const auditSection = await screen.findByTestId('audit-logs-section');
+    expect(auditSection).toBeInTheDocument();
+    expect(within(auditSection).getByText('HIDE_LISTING')).toBeInTheDocument();
   });
 });
