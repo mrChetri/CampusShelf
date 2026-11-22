@@ -40,6 +40,7 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
   if (!isOpen || !listing) return null;
 
   const isOwner = Boolean(currentUserId && listing.donorId === currentUserId);
+  const isSale = listing.type === 'SALE';
   const photos = listing.photos && listing.photos.length > 0 ? listing.photos : [];
   const currentPhoto = photos[activePhotoIndex] || photos[0];
 
@@ -257,13 +258,20 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
           )}
         </div>
 
-        {/* Request Form (Expandable) */}
+        {/* Request / Enquiry Form (Expandable) */}
         {isRequesting && (
           <div className="p-4 bg-emerald-50/70 border-t border-emerald-100">
             <form onSubmit={handleFormSubmit} className="space-y-3">
+              {isSale && (
+                <div data-testid="sale-enquiry-reminder" className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed">
+                  💡 <strong>Offline Campus Handover:</strong> Asking price of <strong>₹{listing.price}</strong> is paid directly to the seller in Cash or UPI upon physical handover on campus. Zero platform fees or online payments.
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-emerald-900 mb-1">
-                  Optional Note for Donor ({500 - requestNote.length} characters left)
+                  {isSale
+                    ? `Optional Note for Seller (e.g. proposed meetup time on campus) (${500 - requestNote.length} characters left)`
+                    : `Optional Note for Donor (${500 - requestNote.length} characters left)`}
                 </label>
                 <textarea
                   data-testid="request-note-input"
@@ -271,7 +279,11 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                   maxLength={500}
                   value={requestNote}
                   onChange={(e) => setRequestNote(e.target.value)}
-                  placeholder="e.g. Taking this course this semester, will pick up at the library."
+                  placeholder={
+                    isSale
+                      ? 'e.g. Available near Library after 3 PM. Will pay ₹' + (listing.price || 0) + ' via UPI/cash.'
+                      : 'e.g. Taking this course this semester, will pick up at the library.'
+                  }
                   className="w-full text-xs p-2.5 rounded-lg border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                 />
               </div>
@@ -297,7 +309,13 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                   disabled={isSubmitting}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow disabled:opacity-50 transition-colors"
                 >
-                  {isSubmitting ? 'Sending Request...' : 'Send Request'}
+                  {isSubmitting
+                    ? isSale
+                      ? 'Submitting Enquiry...'
+                      : 'Sending Request...'
+                    : isSale
+                    ? 'Submit Purchase Enquiry'
+                    : 'Send Request'}
                 </button>
               </div>
             </form>
@@ -338,7 +356,7 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
               className="bg-amber-100 text-amber-800 text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center space-x-1"
             >
               <span>⏳</span>
-              <span>Requested (Pending)</span>
+              <span>{isSale ? 'Enquiry Sent (Pending)' : 'Requested (Pending)'}</span>
             </span>
           ) : isCampusMember ? (
             !isRequesting && (
@@ -347,12 +365,12 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                 data-testid="open-request-form-btn"
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow flex items-center space-x-1.5 transition-colors"
               >
-                <span>Request This Book</span>
+                <span>{isSale ? 'Send Purchase Enquiry' : 'Request This Book'}</span>
               </button>
             )
           ) : (
             <div className="text-xs text-slate-500 italic">
-              Join your campus as a Campus Member to request books.
+              Join your campus as a Campus Member to {isSale ? 'enquire about' : 'request'} books.
             </div>
           )}
         </div>

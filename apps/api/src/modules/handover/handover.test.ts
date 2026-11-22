@@ -276,4 +276,60 @@ describe('Handover Module Seam (CS-008)', () => {
       expect(reqRes.body.requests[0].status).toBe('CANCELLED');
     });
   });
+
+  describe('CS-012 Offline Sale Handover & Marking as SOLD', () => {
+    it('creates handover with SALE listingType and asking price, then completes marking listing as SOLD', async () => {
+      const donorProfile = userService.getProfileById(donorId)!;
+      const saleListing = listingService.createListing(donorProfile, {
+        title: 'Digital Signal Processing',
+        author: 'Proakis and Manolakis',
+        subject: 'Electronics',
+        condition: 'LIKE_NEW',
+        pickupLocation: 'ECE Department Foyer',
+        photos: ['https://example.com/dsp.jpg'],
+        type: 'SALE',
+        price: 450,
+      });
+
+      // Recipient sends purchase enquiry
+      const reqRes = await request
+        .post(`/api/listings/${saleListing.id}/requests`)
+        .set('Authorization', `Bearer ${recipientToken}`)
+        .send({ message: 'I will buy this tomorrow at lunch.' });
+      const saleReqId = reqRes.body.request.id;
+
+      // Seller accepts enquiry
+      const acceptRes = await request
+        .post(`/api/requests/${saleReqId}/accept`)
+        .set('Authorization', `Bearer ${donorToken}`);
+      expect(acceptRes.status).toBe(200);
+
+      const saleHandover = handoverService.getHandoverByRequestId(saleReqId, donorId)!;
+      expect(saleHandover.listingType).toBe('SALE');
+      expect(saleHandover.price).toBe(450);
+
+      // Seller marks handover complete (confirming in-person physical exchange)
+      const completeRes = await request
+        .post(`/api/handovers/${saleHandover.id}/complete`)
+        .set('Authorization', `Bearer ${donorToken}`);
+
+      expect(completeRes.status).toBe(200);
+      expect(completeRes.body.success).toBe(true);
+      expect(completeRes.body.message).toMatch(/sale recorded/i);
+      expect(completeRes.body.handover.status).toBe('COMPLETED');
+
+      // Listing must transition to SOLD (not DONATED)
+      const listingRes = await request.get(`/api/listings/${saleListing.id}`);
+      expect(listingRes.body.listing.status).toBe('SOLD');
+
+      // Recipient gets purchase completed notification
+      const notifsRes = await request
+        .get('/api/notifications')
+        .set('Authorization', `Bearer ${recipientToken}`);
+      const purchaseNotif = notifsRes.body.notifications.find(
+        (n: any) => n.title.includes('Purchase completed') || n.body.includes('confirmed by the seller')
+      );
+      expect(purchaseNotif).toBeDefined();
+    });
+  });
 });

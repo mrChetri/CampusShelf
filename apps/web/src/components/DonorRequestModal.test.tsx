@@ -195,4 +195,31 @@ describe('DonorRequestModal Component (CS-007)', () => {
     expect(banner).toHaveTextContent(/Listing is RESERVED/i);
     expect(banner).toHaveTextContent(/72 hours/i);
   });
+
+  it('renders sale enquiries with asking price and cash/UPI handover note for sale listings (CS-012)', () => {
+    const saleListing: Listing = {
+      ...sampleListing,
+      id: 'sale-listing-1',
+      title: 'Microeconomic Theory',
+      type: 'SALE',
+      price: 350,
+      status: 'RESERVED',
+      reservedUntil: '2026-11-23T10:00:00.000Z',
+    };
+
+    render(
+      <DonorRequestModal
+        isOpen={true}
+        listing={saleListing}
+        requests={sampleRequests}
+        onClose={vi.fn()}
+        onAcceptRequest={vi.fn()}
+        onDeclineRequest={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(/Purchase Enquiries for: Microeconomic Theory/i);
+    expect(screen.getByTestId('modal-sale-price')).toHaveTextContent(/₹350/);
+    expect(screen.getByTestId('handover-reservation-banner')).toHaveTextContent(/buyer will pay ₹350 directly in Cash or UPI/i);
+  });
 });

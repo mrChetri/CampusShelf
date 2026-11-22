@@ -16,6 +16,8 @@ export interface CreateHandoverParams {
   pickupLocation: string;
   scheduleNotes?: string | null;
   reservedUntil: string;
+  listingType?: 'DONATION' | 'SALE';
+  price?: number | null;
 }
 
 export class HandoverService {
@@ -36,6 +38,8 @@ export class HandoverService {
       pickupLocation: params.pickupLocation,
       scheduleNotes: params.scheduleNotes || null,
       status: 'SCHEDULED',
+      listingType: params.listingType || 'DONATION',
+      price: params.price ?? null,
       reservedUntil: params.reservedUntil,
       completedAt: null,
       disputedAt: null,
@@ -122,22 +126,28 @@ export class HandoverService {
     handover.completedAt = now;
     handover.updatedAt = now;
 
-    // Atomically transition listing and request to COMPLETED/DONATED
+    // Atomically transition listing and request to COMPLETED/DONATED or SOLD
     listingService.completeListing(handover.listingId);
     requestService.completeRequest(handover.requestId);
+
+    const isSale = handover.listingType === 'SALE';
 
     // Notify recipient that the handover is confirmed
     notificationService.createNotification({
       userId: handover.recipientId,
       type: 'HANDOVER_COMPLETED',
-      title: 'Handover completed! 📚',
-      body: `Your handover for "${handover.listingTitle}" has been confirmed by the donor. Enjoy the book!`,
+      title: isSale ? 'Purchase completed! 📚' : 'Handover completed! 📚',
+      body: isSale
+        ? `Your purchase handover for "${handover.listingTitle}" has been confirmed by the seller. Enjoy the book!`
+        : `Your handover for "${handover.listingTitle}" has been confirmed by the donor. Enjoy the book!`,
       entityId: handover.id,
     });
 
     return {
       success: true,
-      message: 'Handover marked as completed. Thank you for donating!',
+      message: isSale
+        ? 'Handover marked as completed. Sale recorded!'
+        : 'Handover marked as completed. Thank you for donating!',
       handover,
     };
   }

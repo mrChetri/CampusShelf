@@ -402,6 +402,8 @@ export default function App(): React.JSX.Element {
         requesterId: currentUser?.id || 'requester-id',
         requesterName: currentUser?.fullName || 'Requester',
         status: 'PENDING',
+        listingType: targetListing?.type ?? 'DONATION',
+        listingPrice: targetListing?.price ?? null,
         message: message || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -597,15 +599,30 @@ export default function App(): React.JSX.Element {
       }
 
       setMyListings((prev) =>
-        prev.map((l) => (l.id === listingId ? { ...l, status: 'DONATED' } : l))
+        prev.map((l) => (l.id === listingId ? { ...l, status: l.type === 'SALE' ? 'SOLD' : 'DONATED' } : l))
       );
       setMyRequests((prev) =>
         prev.map((r) => (r.listingId === listingId ? { ...r, status: 'COMPLETED' } : r))
       );
+
+      // Refresh history upon handover completion
+      if (token) {
+        fetch('/api/notifications/history', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => (res.ok ? res.json() : Promise.reject()))
+          .then((data) => {
+            if (data?.history) {
+              setHistoryBooksGiven(data.history.booksGiven ?? []);
+              setHistoryBooksReceived(data.history.booksReceived ?? []);
+            }
+          })
+          .catch(() => {});
+      }
     } catch (err: any) {
       if (err.isHttpError) throw err;
       setMyListings((prev) =>
-        prev.map((l) => (l.id === listingId ? { ...l, status: 'DONATED' } : l))
+        prev.map((l) => (l.id === listingId ? { ...l, status: l.type === 'SALE' ? 'SOLD' : 'DONATED' } : l))
       );
       setMyRequests((prev) =>
         prev.map((r) => (r.listingId === listingId ? { ...r, status: 'COMPLETED' } : r))

@@ -14,6 +14,7 @@ export const ListingStatusEnum = z.enum([
   'AVAILABLE',
   'RESERVED',
   'DONATED',
+  'SOLD',
   'WITHDRAWN',
   'HIDDEN',
 ]);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ListingTypeEnum } from './listing.contract';
 
 export const HandoverStatusEnum = z.enum([
   'SCHEDULED',
@@ -22,6 +23,8 @@ export const HandoverSchema = z.object({
   pickupLocation: z.string(),
   scheduleNotes: z.string().nullable().optional(),
   status: HandoverStatusEnum.default('SCHEDULED'),
+  listingType: ListingTypeEnum.default('DONATION').optional(),
+  price: z.number().int().nullable().optional(),
   reservedUntil: z.string().datetime(),
   completedAt: z.string().datetime().nullable().optional(),
   disputedAt: z.string().datetime().nullable().optional(),

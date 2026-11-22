@@ -87,7 +87,17 @@ export const MyRequests: React.FC<MyRequestsProps> = ({
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-600 mb-2">by {req.listingAuthor}</p>
+                  <p className="text-xs text-slate-600 mb-2 flex items-center gap-1.5 flex-wrap">
+                    <span>by {req.listingAuthor}</span>
+                    {req.listingType === 'SALE' && req.listingPrice && (
+                      <span
+                        data-testid="request-price-badge"
+                        className="inline-flex items-center text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded"
+                      >
+                        🏷️ ₹{req.listingPrice}
+                      </span>
+                    )}
+                  </p>
 
                 <div className="bg-slate-50 rounded-lg p-2.5 text-[11px] text-slate-600 space-y-1 mb-3 border border-slate-100">
                   <div>
@@ -97,7 +107,7 @@ export const MyRequests: React.FC<MyRequestsProps> = ({
                     <span className="text-slate-400">Pickup Zone:</span> {req.pickupLocation}
                   </div>
                   <div>
-                    <span className="text-slate-400">Donor:</span> {req.donorName}
+                    <span className="text-slate-400">{req.listingType === 'SALE' ? 'Seller:' : 'Donor:'}</span> {req.donorName}
                   </div>
                   {req.message && (
                     <div className="pt-1 mt-1 border-t border-slate-200/60">
@@ -109,8 +119,17 @@ export const MyRequests: React.FC<MyRequestsProps> = ({
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-[11px] text-emerald-800 mb-3 flex items-start space-x-1.5">
                     <span>🤝</span>
                     <div>
-                      <strong className="font-semibold">Handover Scheduled:</strong> Meet donor at{' '}
-                      <strong>{req.pickupLocation}</strong> within 72 hours.
+                      {req.listingType === 'SALE' ? (
+                        <>
+                          <strong className="font-semibold">Purchase Enquiry Accepted:</strong> Meet seller at{' '}
+                          <strong>{req.pickupLocation}</strong> within 72 hours. Pay ₹{req.listingPrice} directly in Cash or UPI upon physical handover.
+                        </>
+                      ) : (
+                        <>
+                          <strong className="font-semibold">Handover Scheduled:</strong> Meet donor at{' '}
+                          <strong>{req.pickupLocation}</strong> within 72 hours.
+                        </>
+                      )}
                     </div>
                   </div>
                 )}

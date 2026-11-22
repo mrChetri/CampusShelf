@@ -39,7 +39,7 @@ export const MyListings: React.FC<MyListingsProps> = ({
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-slate-800 text-base flex items-center space-x-2">
           <span>📦</span>
-          <span>My Donated Books ({listings.length})</span>
+          <span>My Listings ({listings.length})</span>
         </h3>
         <button
           onClick={onOpenDonateModal}
@@ -82,6 +82,8 @@ export const MyListings: React.FC<MyListingsProps> = ({
                           ? 'bg-emerald-100 text-emerald-800'
                           : listing.status === 'RESERVED'
                           ? 'bg-purple-100 text-purple-800'
+                          : listing.status === 'SOLD'
+                          ? 'bg-blue-100 text-blue-800'
                           : 'bg-slate-200 text-slate-700'
                       }`}
                     >
@@ -90,6 +92,12 @@ export const MyListings: React.FC<MyListingsProps> = ({
                     <span className="text-[10px] bg-amber-100 text-amber-800 font-medium px-2 py-0.5 rounded">
                       {listing.condition}
                     </span>
+                    {listing.type === 'SALE' && listing.price && (
+                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded flex items-center space-x-0.5">
+                        <span>🏷️</span>
+                        <span>₹{listing.price}</span>
+                      </span>
+                    )}
                     <span className="text-[10px] text-slate-400">
                       {listing.subject}
                     </span>
@@ -120,12 +128,12 @@ export const MyListings: React.FC<MyListingsProps> = ({
                 {listing.status === 'RESERVED' && onCompleteHandover && (
                   <button
                     onClick={() => onCompleteHandover(listing.id)}
-                    data-testid="mark-donated-btn"
+                    data-testid={listing.type === 'SALE' ? 'mark-sold-btn' : 'mark-donated-btn'}
                     data-cy="complete-handover-btn"
                     className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1 w-full sm:w-auto justify-center shadow-sm"
                   >
                     <span>🤝</span>
-                    <span>Mark as Donated</span>
+                    <span>{listing.type === 'SALE' ? 'Mark as Sold' : 'Mark as Donated'}</span>
                   </button>
                 )}
                 {isAvailable && (

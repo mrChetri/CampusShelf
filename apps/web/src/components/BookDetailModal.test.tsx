@@ -149,4 +149,57 @@ describe('BookDetailModal Component', () => {
     expect(screen.getByTestId('detail-asking-price')).toHaveTextContent('₹320');
     expect(screen.getByText(/Pay directly to seller \(Cash or UPI\) during campus handover/i)).toBeInTheDocument();
   });
+
+  it('renders purchase enquiry CTA, cash/UPI reminder, and pending badge for sale listings (CS-012)', () => {
+    const saleListing: PublicListing = {
+      ...sampleListing,
+      id: 'detail-sale-2',
+      title: 'Digital Systems Principles',
+      type: 'SALE',
+      price: 280,
+    };
+
+    const handleRequest = vi.fn().mockResolvedValue(true);
+
+    const { rerender } = render(
+      <BookDetailModal
+        isOpen={true}
+        listing={saleListing}
+        onClose={vi.fn()}
+        isCampusMember={true}
+        currentUserId="buyer-1"
+        onRequestListing={handleRequest}
+      />
+    );
+
+    // Verify button says "Send Purchase Enquiry"
+    const openBtn = screen.getByTestId('open-request-form-btn');
+    expect(openBtn).toHaveTextContent(/Send Purchase Enquiry/i);
+
+    fireEvent.click(openBtn);
+
+    // Form inputs and reminder banner appear
+    expect(screen.getByText(/Optional Note for Seller/i)).toBeInTheDocument();
+    expect(screen.getByTestId('sale-enquiry-reminder')).toBeInTheDocument();
+    expect(screen.getByTestId('submit-request-btn')).toHaveTextContent(/Submit Purchase Enquiry/i);
+
+    fireEvent.change(screen.getByTestId('request-note-input'), {
+      target: { value: 'Can meet at student union. Will pay ₹280 cash.' },
+    });
+    fireEvent.click(screen.getByTestId('submit-request-btn'));
+    expect(handleRequest).toHaveBeenCalledWith(saleListing.id, 'Can meet at student union. Will pay ₹280 cash.');
+
+    // Rerender with hasActiveRequest=true
+    rerender(
+      <BookDetailModal
+        isOpen={true}
+        listing={saleListing}
+        onClose={vi.fn()}
+        isCampusMember={true}
+        currentUserId="buyer-1"
+        hasActiveRequest={true}
+      />
+    );
+    expect(screen.getByTestId('request-pending-badge')).toHaveTextContent(/Enquiry Sent \(Pending\)/i);
+  });
 });

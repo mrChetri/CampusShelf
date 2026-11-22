@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ListingTypeEnum } from './listing.contract';
 
 export const RequestStatusEnum = z.enum([
   'PENDING',
@@ -30,6 +31,8 @@ export const BookRequestSchema = z.object({
   requesterId: z.string().uuid(),
   requesterName: z.string(),
   status: RequestStatusEnum.default('PENDING'),
+  listingType: ListingTypeEnum.default('DONATION').optional(),
+  listingPrice: z.number().int().nullable().optional(),
   message: z.string().nullable().optional(),
   reservedUntil: z.string().datetime().nullable().optional(),
   declineReason: z.string().nullable().optional(),

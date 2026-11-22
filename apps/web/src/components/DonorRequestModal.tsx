@@ -29,6 +29,7 @@ export const DonorRequestModal: React.FC<DonorRequestModalProps> = ({
 
   const isReserved = listing.status === 'RESERVED';
   const isAvailable = listing.status === 'AVAILABLE';
+  const isSale = listing.type === 'SALE';
 
   const handleAccept = async (requestId: string) => {
     setActionError(null);
@@ -80,9 +81,19 @@ export const DonorRequestModal: React.FC<DonorRequestModalProps> = ({
               <span className="text-[10px] bg-amber-100 text-amber-800 font-medium px-2 py-0.5 rounded">
                 {listing.condition}
               </span>
+              {isSale && listing.price && (
+                <span
+                  data-testid="modal-sale-price"
+                  className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded flex items-center space-x-1"
+                >
+                  <span>🏷️</span>
+                  <span>₹{listing.price}</span>
+                </span>
+              )}
             </div>
             <h3 className="text-base font-bold text-slate-900 leading-snug">
-              Requests for: {listing.title}
+              {isSale ? 'Purchase Enquiries for: ' : 'Requests for: '}
+              {listing.title}
             </h3>
             <p className="text-xs text-slate-500">by {listing.author}</p>
           </div>
@@ -107,9 +118,9 @@ export const DonorRequestModal: React.FC<DonorRequestModalProps> = ({
                 Listing is RESERVED — 72-Hour Handover Active
               </div>
               <p className="text-purple-800 text-[11px] leading-relaxed">
-                You accepted a request for this book. Meet the recipient at the agreed campus pickup area{' '}
-                <strong className="font-semibold text-purple-950">({listing.pickupLocation})</strong> to complete
-                the handover within 72 hours.
+                {isSale
+                  ? `You accepted a purchase enquiry for this book. Meet the buyer at the agreed campus pickup area (${listing.pickupLocation}) to complete the handover within 72 hours. The buyer will pay ₹${listing.price} directly in Cash or UPI.`
+                  : `You accepted a request for this book. Meet the recipient at the agreed campus pickup area (${listing.pickupLocation}) to complete the handover within 72 hours.`}
               </p>
             </div>
           </div>

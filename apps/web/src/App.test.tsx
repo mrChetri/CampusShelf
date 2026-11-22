@@ -44,6 +44,7 @@ const mockListings = [
     description: 'Barely used.',
     status: 'AVAILABLE',
     type: 'SALE',
+    price: 350,
     createdAt: '2026-11-19T10:00:00.000Z',
     updatedAt: '2026-11-19T10:00:00.000Z',
   },
@@ -361,22 +362,26 @@ describe('App Root Shell (Frontend Seam)', () => {
           try {
             body = options?.body ? JSON.parse(options.body as string) : {};
           } catch {}
+          const targetListingId = url.split('/api/listings/')[1]?.split('/requests')[0];
+          const targetListing = mockListings.find((l) => l.id === targetListingId);
           return Promise.resolve({
             ok: true,
             json: async () => ({
               request: {
                 id: 'req-1234',
-                listingId: 'b1111111-2222-3333-4444-555555555551',
-                listingTitle: 'University Physics',
-                listingAuthor: 'Young and Freedman',
-                listingPhoto: 'https://example.com/physics.jpg',
-                pickupLocation: 'Central Library Entrance',
-                campusName: 'Darrang College',
-                donorId: 'd1111111-2222-3333-4444-555555555551',
-                donorName: 'Priya Das',
+                listingId: targetListing?.id || 'b1111111-2222-3333-4444-555555555551',
+                listingTitle: targetListing?.title || 'University Physics',
+                listingAuthor: targetListing?.author || 'Young and Freedman',
+                listingPhoto: targetListing?.photos?.[0] || 'https://example.com/physics.jpg',
+                pickupLocation: targetListing?.pickupLocation || 'Central Library Entrance',
+                campusName: targetListing?.campusName || 'Darrang College',
+                donorId: targetListing?.donorId || 'd1111111-2222-3333-4444-555555555551',
+                donorName: targetListing?.donorName || 'Priya Das',
                 requesterId: '11111111-2222-3333-4444-555555555555',
                 requesterName: 'Aarav Sharma',
                 status: 'PENDING',
+                listingType: targetListing?.type || 'DONATION',
+                listingPrice: targetListing?.price ?? null,
                 message: body.message || null,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
@@ -1384,6 +1389,51 @@ describe('App Root Shell (Frontend Seam)', () => {
     await waitFor(() => {
       expect(screen.getByText('Organic Chemistry')).toBeInTheDocument();
       expect(screen.getByTestId('badge-sale')).toBeInTheDocument();
+    });
+  });
+
+  it('allows buyer to submit purchase enquiry on sale listing and view enquiry in My Requests (CS-012)', async () => {
+    render(<App />);
+
+    // Sign in as campus member
+    const signInBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(signInBtn);
+
+    const codeInput = await screen.findByTestId('invite-code-input');
+    const submitBtn = screen.getByTestId('join-campus-btn');
+    fireEvent.change(codeInput, { target: { value: 'DARRANG-PILOT-2026' } });
+    fireEvent.click(submitBtn);
+
+    // Wait for campus onboarding to complete and switch to Browse feed
+    const browseTab = await screen.findByTestId('tab-browse');
+    fireEvent.click(browseTab);
+
+    // Click on Organic Chemistry (SALE listing)
+    const chemCard = await screen.findByText('Organic Chemistry');
+    fireEvent.click(chemCard);
+
+    // Book Detail Modal opens
+    const detailModal = await screen.findByTestId('book-detail-modal');
+    expect(detailModal).toBeInTheDocument();
+    expect(screen.getByTestId('detail-asking-price')).toHaveTextContent(/₹350/);
+
+    // Click Send Purchase Enquiry
+    const openEnquiryBtn = screen.getByTestId('open-request-form-btn');
+    expect(openEnquiryBtn).toHaveTextContent(/Send Purchase Enquiry/i);
+    fireEvent.click(openEnquiryBtn);
+
+    // Verify reminder banner and submit
+    expect(screen.getByTestId('sale-enquiry-reminder')).toBeInTheDocument();
+    const noteInput = screen.getByTestId('request-note-input');
+    fireEvent.change(noteInput, { target: { value: 'Available at Central Library tomorrow 3 PM. Will pay ₹350 cash.' } });
+
+    const submitEnquiryBtn = screen.getByTestId('submit-request-btn');
+    expect(submitEnquiryBtn).toHaveTextContent(/Submit Purchase Enquiry/i);
+    fireEvent.click(submitEnquiryBtn);
+
+    // Modal closes / transitions to pending
+    await waitFor(() => {
+      expect(screen.getByTestId('request-pending-badge')).toHaveTextContent(/Enquiry Sent \(Pending\)/i);
     });
   });
 });

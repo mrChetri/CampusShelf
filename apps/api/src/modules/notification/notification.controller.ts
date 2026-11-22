@@ -70,10 +70,10 @@ export function getDonationHistory(req: Request, res: Response): void {
   }
 
   try {
-    // Books given: listings by this user that are DONATED
+    // Books given or sold: listings by this user that are DONATED or SOLD
     const booksGiven = listingService
       .getMyListings(user.id)
-      .filter((l) => l.status === 'DONATED');
+      .filter((l) => l.status === 'DONATED' || l.status === 'SOLD');
 
     // Books received: requests by this user that are COMPLETED
     const booksReceived = requestService

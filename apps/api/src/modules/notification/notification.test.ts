@@ -303,6 +303,34 @@ describe('Notification Module (CS-009)', () => {
     expect(recipientHistory.body.history.booksReceived[0].status).toBe('COMPLETED');
   });
 
+  it('GET /api/notifications/history includes SOLD listings in seller booksGiven history (CS-012)', async () => {
+    const donorProfile = userService.getProfileById(donorId)!;
+    const saleListing = listingService.createListing(donorProfile, {
+      title: 'Digital Signal Processing',
+      author: 'Proakis and Manolakis',
+      subject: 'Electronics',
+      condition: 'GOOD',
+      pickupLocation: 'ECE Block',
+      photos: ['https://example.com/dsp.jpg'],
+      type: 'SALE',
+      price: 380,
+    });
+
+    // Complete the sale listing -> moves to SOLD
+    listingService.completeListing(saleListing.id);
+
+    const historyRes = await request
+      .get('/api/notifications/history')
+      .set('Authorization', `Bearer ${donorToken}`);
+
+    expect(historyRes.status).toBe(200);
+    const soldBook = historyRes.body.history.booksGiven.find((b: any) => b.id === saleListing.id);
+    expect(soldBook).toBeDefined();
+    expect(soldBook.status).toBe('SOLD');
+    expect(soldBook.type).toBe('SALE');
+    expect(soldBook.price).toBe(380);
+  });
+
   it('GET /api/notifications/history returns empty history for user with no activity', async () => {
     const res = await request
       .get('/api/notifications/history')
