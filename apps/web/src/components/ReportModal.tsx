@@ -58,20 +58,26 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   return (
     <div
       data-testid="report-modal"
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
     >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
-        <div className="p-5 border-b border-slate-100 bg-rose-50/60 flex items-center justify-between">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="report-modal-title"
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200"
+      >
+        <div className="p-4 sm:p-5 border-b border-slate-100 bg-rose-50/60 flex items-center justify-between">
           <div className="flex items-center space-x-2 text-rose-800">
             <span className="text-xl">🚩</span>
-            <h3 className="font-bold text-base">
+            <h3 id="report-modal-title" className="font-bold text-base">
               Report {target.targetType === 'LISTING' ? 'Listing' : 'User'}
             </h3>
           </div>
           <button
             onClick={onClose}
             data-testid="close-report-modal-btn"
-            className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
+            aria-label="Close dialog"
+            className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg focus-visible:ring-2 focus-visible:ring-rose-500"
           >
             ×
           </button>

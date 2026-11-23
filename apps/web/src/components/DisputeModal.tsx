@@ -56,13 +56,18 @@ export const DisputeModal: React.FC<DisputeModalProps> = ({
   return (
     <div
       data-testid="dispute-modal"
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
     >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-start justify-between p-5 border-b border-slate-100 bg-rose-50/50">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dispute-modal-title"
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150"
+      >
+        <div className="flex items-start justify-between p-4 sm:p-5 border-b border-slate-100 bg-rose-50/50">
           <div>
             <span className="text-xl block mb-1">⚠️</span>
-            <h3 className="text-base font-bold text-slate-900 leading-snug">
+            <h3 id="dispute-modal-title" className="text-base font-bold text-slate-900 leading-snug">
               Report a Problem with Handover
             </h3>
             <p className="text-xs text-slate-500">
@@ -71,7 +76,9 @@ export const DisputeModal: React.FC<DisputeModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            data-testid="close-dispute-modal-btn"
+            aria-label="Close dialog"
+            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus-visible:ring-2 focus-visible:ring-rose-500"
           >
             ✕
           </button>

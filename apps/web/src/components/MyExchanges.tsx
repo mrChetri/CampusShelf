@@ -110,13 +110,15 @@ export const MyExchanges: React.FC<MyExchangesProps> = ({
               Swap textbooks directly with verified campus peers. Zero payments or platform fees.
             </p>
           </div>
-          <button
-            onClick={onBrowseBooks}
-            data-testid="browse-books-btn"
-            className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow transition-colors flex items-center space-x-1.5 self-start sm:self-auto"
-          >
-            <span>🔍 Browse Barter Books</span>
-          </button>
+          {proposals.length > 0 && (
+            <button
+              onClick={onBrowseBooks}
+              data-testid="browse-books-btn"
+              className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow transition-colors flex items-center space-x-1.5 self-start sm:self-auto"
+            >
+              <span>🔍 Browse Barter Books</span>
+            </button>
+          )}
         </div>
 
         {/* Filter Tabs */}

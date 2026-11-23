@@ -38,6 +38,7 @@ import { CampaignNeedsView } from './components/CampaignNeedsView';
 import { BookDriveView } from './components/BookDriveView';
 import { ExchangeProposalModal } from './components/ExchangeProposalModal';
 import { MyExchanges } from './components/MyExchanges';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const PILOT_CAMPUS: Campus = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -1142,9 +1143,9 @@ export default function App(): React.JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans overflow-x-hidden">
+      <header className="border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10 w-full">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center space-x-3">
             <span className="text-2xl" role="img" aria-label="Book logo">
               📚
@@ -1255,7 +1256,8 @@ export default function App(): React.JSX.Element {
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto px-4 py-8 flex flex-col items-center justify-center text-center w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-8 flex flex-col items-center justify-center text-center w-full">
+        <ErrorBoundary>
         {currentUser && currentUser.role === 'REGISTERED' && (
           <div
             data-testid="campus-onboarding-card"
@@ -1331,7 +1333,7 @@ export default function App(): React.JSX.Element {
           (currentUser.role === 'CAMPUS_MEMBER' ||
             currentUser.role === 'MODERATOR' ||
             currentUser.role === 'ADMIN') && (
-          <div className="w-full flex items-center justify-center space-x-2 mb-6" data-testid="member-nav-tabs">
+          <div className="w-full flex items-center justify-start sm:justify-center space-x-2 mb-6 overflow-x-auto pb-2 px-1 max-w-full" data-testid="member-nav-tabs">
             <button
               onClick={() => setMemberView('browse')}
               data-testid="tab-browse"
@@ -1626,6 +1628,7 @@ export default function App(): React.JSX.Element {
             <div>• CS-014 NGO Book Needs / Campaign</div>
             <div>• CS-015 Semester Book Drive + Share Links</div>
             <div>• CS-016 Book Exchange Offers</div>
+            <div>• CS-017 Visual Polish and Responsive QA</div>
           </div>
         </div>
 
@@ -1640,6 +1643,7 @@ export default function App(): React.JSX.Element {
             }}
           />
         )}
+        </ErrorBoundary>
       </main>
 
       {/* Donate a Book Modal (CS-004 & CS-014) */}

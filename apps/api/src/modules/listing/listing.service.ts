@@ -11,7 +11,22 @@ export class ListingService {
     this.listings.clear();
   }
 
-  public createListing(donor: UserProfile, input: CreateListingInput): Listing {
+  public createListing(
+    donorOrCombined: UserProfile | (CreateListingInput & { donorId: string; donorName: string; campusId: string }),
+    maybeInput?: CreateListingInput
+  ): Listing {
+    const donor: UserProfile = maybeInput
+      ? (donorOrCombined as UserProfile)
+      : {
+          id: (donorOrCombined as any).donorId,
+          fullName: (donorOrCombined as any).donorName,
+          campusId: (donorOrCombined as any).campusId,
+          status: 'ACTIVE' as const,
+          role: 'CAMPUS_MEMBER' as const,
+          email: `${(donorOrCombined as any).donorId}@test.campus`,
+          createdAt: new Date().toISOString(),
+        };
+    const input: CreateListingInput = maybeInput ?? (donorOrCombined as CreateListingInput);
     if (donor.status === 'SUSPENDED') {
       const err: any = new Error('Forbidden: Account is suspended');
       err.statusCode = 403;

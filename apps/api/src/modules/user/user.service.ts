@@ -77,6 +77,26 @@ export class UserService {
     this.profiles.set(userId, updated);
     return updated;
   }
+
+  public createProfile(profile: Partial<UserProfile> & { id: string }): UserProfile {
+    const fullProfile: UserProfile = {
+      id: profile.id,
+      email: profile.email ?? `${profile.id}@example.com`,
+      fullName: profile.fullName ?? 'Test User',
+      avatarUrl: profile.avatarUrl ?? null,
+      role: profile.role ?? 'CAMPUS_MEMBER',
+      status: profile.status ?? 'ACTIVE',
+      campusId: profile.campusId ?? '550e8400-e29b-41d4-a716-446655440000',
+      campusName: profile.campusName ?? 'Darrang College',
+      createdAt: new Date().toISOString(),
+    };
+    this.profiles.set(profile.id, fullProfile);
+    return fullProfile;
+  }
+
+  public resetForTesting(): void {
+    this.profiles.clear();
+  }
 }
 
 export const userService = new UserService();

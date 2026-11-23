@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Campus, PublicListing, ListingCondition, ListingType } from '@campusshelf/contracts';
+import { SkeletonList } from './SkeletonLoader';
 
 interface BookDiscoveryFeedProps {
   campuses: Campus[];
@@ -146,24 +147,7 @@ export const BookDiscoveryFeed: React.FC<BookDiscoveryFeedProps> = ({
       </div>
 
       {/* Loading Skeleton */}
-      {isLoading && (
-        <div
-          data-testid="listings-skeleton"
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
-        >
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl p-4 border border-slate-200 animate-pulse space-y-3"
-            >
-              <div className="h-40 bg-slate-200 rounded-lg w-full" />
-              <div className="h-4 bg-slate-200 rounded w-3/4" />
-              <div className="h-3 bg-slate-200 rounded w-1/2" />
-              <div className="h-3 bg-slate-200 rounded w-1/3" />
-            </div>
-          ))}
-        </div>
-      )}
+      {isLoading && <SkeletonList count={6} testId="listings-skeleton" />}
 
       {/* Empty State */}
       {!isLoading && listings.length === 0 && (
