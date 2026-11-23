@@ -68,11 +68,16 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
   return (
     <div
       data-testid="book-detail-modal"
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
     >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="book-detail-title"
+        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150"
+      >
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-slate-100 bg-slate-50/70">
+        <div className="flex items-start justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70">
           <div>
             <div className="flex items-center space-x-2 mb-1.5 flex-wrap gap-y-1">
               {listing.type === 'DONATION' ? (
@@ -107,14 +112,14 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
                 {listing.status === 'AVAILABLE' ? '🟢 Available' : listing.status}
               </span>
             </div>
-            <h2 className="text-xl font-bold text-slate-900 leading-snug">{listing.title}</h2>
+            <h2 id="book-detail-title" className="text-xl font-bold text-slate-900 leading-snug">{listing.title}</h2>
             <p className="text-sm text-slate-600">by {listing.author}</p>
           </div>
           <button
             onClick={onClose}
             data-testid="close-detail-modal-btn"
-            className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-lg transition-colors"
-            aria-label="Close modal"
+            className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500"
+            aria-label="Close dialog"
           >
             ✕
           </button>

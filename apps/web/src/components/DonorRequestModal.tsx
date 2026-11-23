@@ -62,9 +62,14 @@ export const DonorRequestModal: React.FC<DonorRequestModalProps> = ({
       data-testid="donor-request-modal"
       className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
     >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="donor-request-title"
+        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150"
+      >
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-slate-100 bg-slate-50/70">
+        <div className="flex items-start justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70">
           <div>
             <div className="flex items-center space-x-2 mb-1">
               <span
@@ -91,7 +96,7 @@ export const DonorRequestModal: React.FC<DonorRequestModalProps> = ({
                 </span>
               )}
             </div>
-            <h3 className="text-base font-bold text-slate-900 leading-snug">
+            <h3 id="donor-request-title" className="text-base font-bold text-slate-900 leading-snug">
               {isSale ? 'Purchase Enquiries for: ' : 'Requests for: '}
               {listing.title}
             </h3>
@@ -100,7 +105,8 @@ export const DonorRequestModal: React.FC<DonorRequestModalProps> = ({
           <button
             onClick={onClose}
             data-testid="close-donor-modal-btn"
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            aria-label="Close dialog"
+            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             ✕
           </button>

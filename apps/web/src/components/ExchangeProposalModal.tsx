@@ -17,7 +17,7 @@ interface ExchangeProposalModalProps {
 export const ExchangeProposalModal: React.FC<ExchangeProposalModalProps> = ({
   isOpen,
   targetListing,
-  myAvailableListings,
+  myAvailableListings = [],
   onClose,
   onSubmitProposal,
   onOpenDonateModal,
@@ -29,7 +29,7 @@ export const ExchangeProposalModal: React.FC<ExchangeProposalModalProps> = ({
 
   if (!isOpen || !targetListing) return null;
 
-  const eligibleListings = myAvailableListings.filter((l) => l.status === 'AVAILABLE');
+  const eligibleListings = (myAvailableListings || []).filter((l) => l.status === 'AVAILABLE');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,20 +58,25 @@ export const ExchangeProposalModal: React.FC<ExchangeProposalModalProps> = ({
   return (
     <div
       data-testid="exchange-proposal-modal"
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
     >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="exchange-proposal-title"
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-sky-50/60">
           <div className="flex items-center space-x-2">
             <span className="text-xl">🔄</span>
-            <h3 className="font-bold text-slate-900 text-sm">Propose a Book Exchange</h3>
+            <h3 id="exchange-proposal-title" className="font-bold text-slate-900 text-sm">Propose a Book Exchange</h3>
           </div>
           <button
             onClick={onClose}
             data-testid="close-exchange-modal-btn"
-            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg text-sm"
-            aria-label="Close modal"
+            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg text-sm focus-visible:ring-2 focus-visible:ring-sky-500"
+            aria-label="Close dialog"
           >
             ✕
           </button>

@@ -263,13 +263,18 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
       data-testid="donate-book-modal"
       className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
     >
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 text-left relative max-h-[90vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="donate-modal-title"
+        className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-4 sm:p-6 text-left relative max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
           <div className="flex items-center space-x-2">
             <span className="text-xl">
               {listingType === 'SALE' ? '🏷️' : listingType === 'EXCHANGE' ? '🔄' : '📖'}
             </span>
-            <h3 className="font-bold text-lg text-slate-800">
+            <h3 id="donate-modal-title" className="font-bold text-lg text-slate-800">
               {listingType === 'SALE'
                 ? 'List Book for Sale'
                 : listingType === 'EXCHANGE'
@@ -279,8 +284,8 @@ export const DonateBookModal: React.FC<DonateBookModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-md"
-            aria-label="Close modal"
+            className="text-slate-400 hover:text-slate-600 p-1 rounded-md focus-visible:ring-2 focus-visible:ring-emerald-500"
+            aria-label="Close dialog"
           >
             ✕
           </button>

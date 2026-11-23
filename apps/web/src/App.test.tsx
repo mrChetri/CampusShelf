@@ -1775,10 +1775,11 @@ describe('App Root Shell (Frontend Seam)', () => {
     fireEvent.click(donateBtn);
 
     // Verify Donate Book modal opened with campaign banner and pre-populated values
-    expect(screen.getByTestId('donate-book-modal')).toBeInTheDocument();
+    const donateModal = screen.getByTestId('donate-book-modal');
+    expect(donateModal).toBeInTheDocument();
     expect(screen.getByTestId('campaign-donation-banner')).toBeInTheDocument();
     expect(screen.getByText(/Donating to Campaign:/i)).toBeInTheDocument();
-    expect(screen.getByText(/B.Sc Semester 1 Physics Textbook Drive/i)).toBeInTheDocument();
+    expect(within(donateModal).getByText(/B.Sc Semester 1 Physics Textbook Drive/i)).toBeInTheDocument();
     expect(screen.getByTestId('input-course')).toHaveValue('B.Sc Physics');
   });
 
@@ -1847,8 +1848,9 @@ describe('App Root Shell (Frontend Seam)', () => {
     fireEvent.click(exchangeCard);
 
     // Verify BookDetailModal opens with barter details
-    expect(await screen.findByTestId('book-detail-modal')).toBeInTheDocument();
-    expect(screen.getByTestId('badge-exchange')).toBeInTheDocument();
+    const detailModal = await screen.findByTestId('book-detail-modal');
+    expect(detailModal).toBeInTheDocument();
+    expect(within(detailModal).getByTestId('badge-exchange')).toBeInTheDocument();
     expect(screen.getByTestId('exchange-preferences-banner')).toBeInTheDocument();
 
     // Click "Propose Book Exchange"
@@ -1873,6 +1875,6 @@ describe('App Root Shell (Frontend Seam)', () => {
 
     // Verify redirected to exchanges view with our proposal
     expect(await screen.findByTestId('my-exchanges-view')).toBeInTheDocument();
-    expect(screen.getByText('Operating System Concepts')).toBeInTheDocument();
+    expect(screen.getAllByText('Operating System Concepts').length).toBeGreaterThan(0);
   });
 });

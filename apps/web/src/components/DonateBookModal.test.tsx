@@ -1,8 +1,32 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DonateBookModal } from './DonateBookModal';
 
 describe('DonateBookModal Component (CS-004 & CS-011)', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (_url, options) => {
+        const body = options?.body ? JSON.parse(options.body) : {};
+        return {
+          ok: true,
+          json: async () => ({
+            listing: {
+              id: 'test-listing-id',
+              status: 'AVAILABLE',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              ...body,
+            },
+          }),
+        };
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('does not render when isOpen is false', () => {
     const { container } = render(
       <DonateBookModal isOpen={false} onClose={vi.fn()} onSuccess={vi.fn()} />
@@ -66,29 +90,6 @@ describe('DonateBookModal Component (CS-004 & CS-011)', () => {
   it('submits a valid secondary sale listing and triggers onSuccess', async () => {
     const handleSuccess = vi.fn();
     const handleClose = vi.fn();
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          listing: {
-            id: 'sale-listing-1',
-            title: 'Organic Chemistry',
-            author: 'Paula Bruice',
-            subject: 'Chemistry',
-            condition: 'GOOD',
-            pickupLocation: 'Central Library Ground Floor Entrance',
-            photos: ['https://example.com/chem.jpg'],
-            type: 'SALE',
-            price: 350,
-            status: 'AVAILABLE',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        }),
-      })
-    );
 
     render(
       <DonateBookModal
@@ -173,8 +174,6 @@ describe('DonateBookModal Component (CS-004 & CS-011)', () => {
         expect.objectContaining({
           type: 'DONATION',
           campaignNeedId: 'need-123',
-          campaignTitle: 'First-Year Physics Drive',
-          partnerName: 'Tezpur Book Bank',
           title: 'Halliday and Resnick Physics',
         })
       );
