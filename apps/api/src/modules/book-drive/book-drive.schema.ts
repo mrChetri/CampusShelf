@@ -1,6 +1,6 @@
 export {
-  BookDriveSummary,
+  type BookDriveSummary,
   BookDriveSummarySchema,
-  PublicBookDriveResponse,
+  type PublicBookDriveResponse,
   PublicBookDriveResponseSchema,
 } from '@campusshelf/contracts';

@@ -1,12 +1,12 @@
 export {
-  ExchangeProposalStatus,
+  type ExchangeProposalStatus,
   ExchangeProposalStatusSchema,
-  CreateExchangeProposalInput,
+  type CreateExchangeProposalInput,
   CreateExchangeProposalInputSchema,
-  ExchangeProposal,
+  type ExchangeProposal,
   ExchangeProposalSchema,
-  ExchangeProposalResponse,
+  type ExchangeProposalResponse,
   ExchangeProposalResponseSchema,
-  ExchangeProposalsListResponse,
+  type ExchangeProposalsListResponse,
   ExchangeProposalsListResponseSchema,
 } from '@campusshelf/contracts';
